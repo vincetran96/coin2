@@ -4,19 +4,27 @@ import json
 import logging
 from pprint import pprint
 from random import random
-from typing import List, NoReturn
+from typing import Any, List, NoReturn
+from urllib.parse import urljoin
 
 import requests
 import websockets
 from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
-from common.kafka import acked, kafka_producer
+from common.kafka import acked, create_kafka_producer
 
 
 REST_URI = "https://api.binance.com/api/v3"
 WS_URI = "wss://stream.binance.com:9443/ws"
 BACKOFF_MIN_SECS = 2.0
 ASYNCIO_SLEEPTIME = 0.01
+
+
+def send_to_kafka(producer: Any, topic: str, data_list: List[dict]):
+    """Send data to Kafka"""
+    for data in data_list:
+        producer.produce(topic=topic, key=data['symbol'], value=json.dumps(data), callback=acked)
+    producer.flush()
 
 
 def get_symbols() -> List[str]:
@@ -27,13 +35,14 @@ def get_symbols() -> List[str]:
     """
     resp = requests.get(f"{REST_URI}/exchangeInfo", timeout=60)
     resp.raise_for_status()
-    # return [d['symbol'] for d in resp.json()['symbols']]
-    return ["ETHBTC"]
+    return [d['symbol'] for d in resp.json()['symbols']][:10]
+    # return ["ETHBTC"]
 
 
 async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
     """Subscribe to symbols"""
     backoff_delay = BACKOFF_MIN_SECS
+    kafka_producer = create_kafka_producer()
     while True:
         try:
             async with websockets.connect(WS_URI) as con:
@@ -68,11 +77,15 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                                 'close_': msg['k']['c'],
                                 'volume_': msg['k']['v'],
                             }
-                            data_list.append(json.dumps(data))
+                            data_list.append(data)
                             print("Data:")
                             pprint(data)
                     if len(data_list) >= 2:
-                        send_to_kafka(topic="coin2-ws", data_list=data_list)
+                        send_to_kafka(
+                            producer=kafka_producer,
+                            topic="coin2-ws",
+                            data_list=data_list
+                        )
                     await asyncio.sleep(ASYNCIO_SLEEPTIME)
         except (ConnectionClosed, InvalidStatusCode) as exc:
             print(f"Connection {i}: Raised exception: {exc} - reconnecting...")
@@ -90,17 +103,9 @@ async def subscribe_symbols(symbols: List, batchsize: int = 10):
     )
 
 
-def send_to_kafka(topic: str, data_list: List[str]):
-    """Send data to Kafka"""
-    producer = kafka_producer()
-    for data in data_list:
-        producer.produce(topic=topic, value=data, callback=acked)
-    producer.flush()
-
-
 def run_subscribe():
     """Run subscribe"""
-    asyncio.run(subscribe_symbols(symbols=get_symbols()[:10], batchsize=100))
+    asyncio.run(subscribe_symbols(symbols=get_symbols(), batchsize=100))
 
 
 run_subscribe()

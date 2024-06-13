@@ -9,12 +9,12 @@ def acked(err, msg):
     """Ack callback, used for delivery
     """
     if err is not None:
-        print("Failed to deliver message: %s: %s" % (str(msg), str(err)))
+        print("Message delivery failed: {}".format(err))
     else:
-        print("Message produced: %s" % (str(msg)))
+        print("Message delivered to {} [{}]".format(msg.topic(), msg.partition()))
 
 
-def kafka_producer() -> Producer:
+def create_kafka_producer() -> Producer:
     """Create a Kafka producer
     """
     # return Producer(
@@ -24,6 +24,6 @@ def kafka_producer() -> Producer:
     # )
     return Producer(
         {
-            "bootstrap.servers": "localhost:9094"
+            "bootstrap.servers": "localhost:9095"
         }
     )
