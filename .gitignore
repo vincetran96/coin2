@@ -1,4 +1,3 @@
-*__pycache__/
 .vscode/
 .ipynb_checkpoints/
 .pytest_cache/
@@ -13,8 +12,11 @@ _old*
 .bak
 .dat
 .dir
+*.tar
 docker_data/
 bin/
+
+*-configmap.yaml
 
 # .gitignore template
 # Byte-compiled / optimized / DLL files
@@ -27,7 +29,6 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
 develop-eggs/
 dist/
 downloads/

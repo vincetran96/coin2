@@ -54,7 +54,7 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                         "id": i
                     })
                 )
-                print(f"Connection {i}: Successful")
+                logging.info(f"Connection {i}: Successful")
                 backoff_delay = BACKOFF_MIN_SECS
                 data_list = []
                 while True:
@@ -66,7 +66,7 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                         ):
                             raise ValueError("Something wrong with our subscribe msg")
                         elif "s" not in msg:
-                            print("Something wrong with received msg, skip it")
+                            logging.warning("Something wrong with received msg, skip it")
                         else:
                             data = {
                                 'symbol': msg['s'],
@@ -78,8 +78,7 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                                 'volume_': msg['k']['v'],
                             }
                             data_list.append(data)
-                            print("Data:")
-                            pprint(data)
+                            logging.info(f"Data:\n{data}")
                     if len(data_list) >= 2:
                         send_to_kafka(
                             producer=kafka_producer,
@@ -88,7 +87,7 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                         )
                     await asyncio.sleep(ASYNCIO_SLEEPTIME)
         except (ConnectionClosed, InvalidStatusCode) as exc:
-            print(f"Connection {i}: Raised exception: {exc} - reconnecting...")
+            logging.error(f"Connection {i}: Raised exception: {exc} - reconnecting...")
             await asyncio.sleep(backoff_delay)
             backoff_delay *= (1 + random())
 
@@ -108,4 +107,6 @@ def run_subscribe():
     asyncio.run(subscribe_symbols(symbols=get_symbols(), batchsize=100))
 
 
-run_subscribe()
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    run_subscribe()

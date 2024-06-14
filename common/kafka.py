@@ -17,13 +17,8 @@ def acked(err, msg):
 def create_kafka_producer() -> Producer:
     """Create a Kafka producer
     """
-    # return Producer(
-    #     {
-    #         "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER)
-    #     }
-    # )
     return Producer(
         {
-            "bootstrap.servers": "localhost:9095"
+            "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER)
         }
     )

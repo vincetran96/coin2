@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: coin2
+  namespace: coin2
+  name: env
+data:
+  CELERY_PORT: "5566"
+  KAFKA_BOOTSTRAP_SERVER: TAILSCALE_IP:9094
+  POSTGRES_HOST: coin-psql
+  POSTGRES_PASSWORD: PASSWORD
+  POSTGRES_PORT: "5432"
+  REDIS_HOST: coin-redis
+  REDIS_PASSWORD: PASSWORD
+  REDIS_PORT: "6379"
+  WEB_PORT: "8000"
