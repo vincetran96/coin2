@@ -9,7 +9,10 @@ class OsVariable:  # pylint: disable=too-few-public-methods
     REDIS_USER = "REDIS_USER"
     REDIS_PORT = "REDIS_PORT"
 
+    KAFKA_HOST = "KAFKA_HOST"
+    KAFKA_PORT = "KAFKA_PORT"
     KAFKA_BOOTSTRAP_SERVER = "KAFKA_BOOTSTRAP_SERVER"
+    KAFKA_WS_BINANCE_TOPIC = "KAFKA_WS_BINANCE_TOPIC"
 
 
 class Config:
