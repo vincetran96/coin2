@@ -16,6 +16,7 @@ services:
     container_name: coin2-kafka-0
     ports:
       - "9094:9094"
+    network_mode: host
     environment:
       # KRaft settings
       - KAFKA_CFG_NODE_ID=0
@@ -33,6 +34,7 @@ services:
     container_name: coin2-kafka-1
     ports:
       - "9095:9095"
+    network_mode: host
     environment:
       # KRaft settings
       - KAFKA_CFG_NODE_ID=1
@@ -50,6 +52,7 @@ services:
     container_name: coin2-kafka-2
     ports:
       - "9096:9096"
+    network_mode: host
     environment:
       # KRaft settings
       - KAFKA_CFG_NODE_ID=2
