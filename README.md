@@ -11,7 +11,7 @@ chmod +x build/local-k8s-repo.sh
 ./build/local-k8s-repo.sh
 ```
 ## Kafka
-### Setup
+### Setup cluster
 ```bash
 docker compose -f build/kafka.docker-compose.yaml up
 ```
