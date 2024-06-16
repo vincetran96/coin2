@@ -14,7 +14,7 @@ from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 from common.kafka import acked, create_kafka_producer
 
 
-REST_URI = "https://api.binance.com/api/v3"
+HTTP_URI = "https://api.binance.com/api/v3"
 WS_URI = "wss://stream.binance.com:9443/ws"
 BACKOFF_MIN_SECS = 2.0
 ASYNCIO_SLEEPTIME = 0.01
@@ -33,7 +33,7 @@ def get_symbols() -> List[str]:
     Returns:
         List[str]
     """
-    resp = requests.get(f"{REST_URI}/exchangeInfo", timeout=60)
+    resp = requests.get(f"{HTTP_URI}/exchangeInfo", timeout=60)
     resp.raise_for_status()
     return [d['symbol'] for d in resp.json()['symbols']][:10]
     # return ["ETHBTC"]
