@@ -1,11 +1,12 @@
+"""Fetch data from Binance
+"""
 # pylint: disable-all
+# noqa: E501
 import asyncio
 import json
 import logging
-from pprint import pprint
 from random import random
 from typing import Any, List, NoReturn
-from urllib.parse import urljoin
 
 import requests
 import websockets
@@ -16,6 +17,7 @@ from common.kafka import acked, create_kafka_producer
 
 HTTP_URI = "https://api.binance.com/api/v3"
 WS_URI = "wss://stream.binance.com:9443/ws"
+KAFKA_TOPIC = "ws-binance"  # Use OS env var
 BACKOFF_MIN_SECS = 2.0
 ASYNCIO_SLEEPTIME = 0.01
 
@@ -35,7 +37,7 @@ def get_symbols() -> List[str]:
     """
     resp = requests.get(f"{HTTP_URI}/exchangeInfo", timeout=60)
     resp.raise_for_status()
-    return [d['symbol'] for d in resp.json()['symbols']][:10]
+    return [d['symbol'] for d in resp.json()['symbols']][:100]
     # return ["ETHBTC"]
 
 
@@ -79,10 +81,10 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                             }
                             data_list.append(data)
                             logging.info(f"Data:\n{data}")
-                    if len(data_list) >= 2:
+                    if len(data_list) >= 100:
                         send_to_kafka(
                             producer=kafka_producer,
-                            topic="coin2-ws",
+                            topic=KAFKA_TOPIC,
                             data_list=data_list
                         )
                     await asyncio.sleep(ASYNCIO_SLEEPTIME)
@@ -92,7 +94,7 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
             backoff_delay *= (1 + random())
 
 
-async def subscribe_symbols(symbols: List, batchsize: int = 10):
+async def subscribe_symbols(symbols: List, batchsize: int = 100):
     """Subscribe to symbols in batch"""
     await asyncio.gather(
         *(
