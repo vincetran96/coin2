@@ -1,4 +1,5 @@
-"""Administrative operations for fetching work
+"""Administrative operations for fetching work,
+meant to be run once and exit
 """
 import logging
 

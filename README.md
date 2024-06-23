@@ -1,5 +1,5 @@
 # Prerequisites
-- Assuming that you're running on Tailscale
+- Assuming that you're running on Tailscale & K3s
 
 
 # Components
@@ -15,7 +15,7 @@ chmod +x build/local-k8s-repo.sh
 ```bash
 docker compose -f build/kafka.docker-compose.yaml up
 ```
-### Commands
+### Console commands
 ```bash
 docker run -it --rm --network=host bitnami/kafka:3.6.2 \
     kafka-topics.sh \
@@ -38,6 +38,6 @@ kubectl create -f k8s/coin2-configmap.yaml
 ### Start app
 ```bash
 kubectl apply \
-    -f k8s/coin2.yaml \
+    -f k8s/coin2-init-hb.yaml \
     -f k8s/coin2-pvc.yaml
 ```
