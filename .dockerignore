@@ -2,4 +2,5 @@ bin
 build
 docker_data
 k8s
+logs
 **/__pycache__/
