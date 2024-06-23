@@ -7,7 +7,7 @@ metadata:
   labels:
     app: coin2
   namespace: coin2
-  name: coin2-dep
+  name: coin2-init-hb
 spec:
   replicas: 1
   selector:
@@ -22,7 +22,7 @@ spec:
         app: coin2
     spec:
       containers:
-        - name: coin2
+        - name: coin2-init-hb
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
           command: ["/bin/bash"]
