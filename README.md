@@ -32,5 +32,12 @@ docker run -it --rm --network=host bitnami/kafka:3.6.2 \
 ## App k8s deployment
 ### Configs
 ```bash
-kubectl create -f coin2-configmap.yaml
+kubectl create ns coin2
+kubectl create -f k8s/coin2-configmap.yaml
+```
+### Start app
+```bash
+kubectl apply \
+    -f k8s/coin2.yaml \
+    -f k8s/coin2-pvc.yaml
 ```
