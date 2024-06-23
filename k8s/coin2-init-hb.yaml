@@ -30,4 +30,11 @@ spec:
           envFrom:
           - configMapRef:
               name: env
+          resources:
+            requests:
+              memory: 32Mi
+              cpu: 0.1
+            limits:
+              memory: 64Mi
+              cpu: 0.5
       restartPolicy: Always
