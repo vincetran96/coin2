@@ -1,5 +1,6 @@
 """Kafka
 """
+# noqa: E501
 import logging
 
 from typing import List
@@ -16,10 +17,10 @@ def acked(err, msg):
     if err is not None:
         logging.error("Message delivery failed: {}".format(err))
     else:
-        logging.info("Message delivered to {} [{}]".format(msg.topic(), msg.partition()))
+        logging.info("Message delivered to topic: {}, partition: {}".format(msg.topic(), msg.partition()))
 
 
-def create_kafka_producer() -> Producer:
+def create_producer() -> Producer:
     """Create a Kafka producer
     """
     # return Producer(
@@ -33,7 +34,7 @@ def create_kafka_producer() -> Producer:
     )
 
 
-def create_kafka_admin_client():
+def create_admin_client():
     """Create an admin client
     """
     return AdminClient(
@@ -49,7 +50,7 @@ def create_new_topics(topics: List[str], num_partitions: int, replication_factor
         num_partitions: number of partitions
         replication_factor: replication factor
     """
-    client = create_kafka_admin_client()
+    client = create_admin_client()
     ops = client.create_topics(
         [
             NewTopic(
