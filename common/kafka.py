@@ -2,10 +2,10 @@
 """
 # noqa: E501
 import logging
-
+from contextlib import closing
 from typing import List
 
-from confluent_kafka import Producer
+from confluent_kafka import Consumer, Producer
 from confluent_kafka.admin import AdminClient, NewTopic
 
 from common.configs import Config, OsVariable
@@ -15,9 +15,9 @@ def acked(err, msg):
     """Ack callback, used for delivery
     """
     if err is not None:
-        logging.error("Message delivery failed: {}".format(err))
+        logging.error("Msg delivery failed: {}".format(err))
     else:
-        logging.info("Message delivered to topic: {}, partition: {}".format(msg.topic(), msg.partition()))
+        logging.info("Msg delivered to topic: {}, partition: {}".format(msg.topic(), msg.partition()))
 
 
 def create_producer() -> Producer:
@@ -29,8 +29,25 @@ def create_producer() -> Producer:
     #     }
     # )
 
-    return Producer(
-        {"bootstrap.servers": "100.71.94.50:9094"}
+    return Producer({
+        "bootstrap.servers": "100.71.94.50:9094"
+    })
+
+
+def create_consumer(
+    group_id: str,
+    auto_offset_reset: str = "earliest",
+    enable_auto_commit: bool = True
+) -> Consumer:
+    """Create a Kafka consumer
+    """
+    return closing(
+        Consumer({
+            "bootstrap.servers": "100.71.94.50:9094",
+            "group.id": group_id,
+            "auto.offset.reset": auto_offset_reset,
+            "enable.auto.commit": enable_auto_commit
+        })
     )
 
 
@@ -46,9 +63,9 @@ def create_new_topics(topics: List[str], num_partitions: int, replication_factor
     """Create new topics
 
     Args:
-        topics: topics
-        num_partitions: number of partitions
-        replication_factor: replication factor
+        topics (List[str]): topics
+        num_partitions (int): number of partitions
+        replication_factor (int): replication factor
     """
     client = create_admin_client()
     ops = client.create_topics(
