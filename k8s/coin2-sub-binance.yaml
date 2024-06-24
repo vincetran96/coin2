@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.coin.yaml
+    kompose.version: 1.34.0 (cbf2835db)
+  labels:
+    app: coin2
+  namespace: coin2
+  name: coin2-sub-binance
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coin2
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.coin.yaml
+        kompose.version: 1.34.0 (cbf2835db)
+      labels:
+        app: coin2
+    spec:
+      containers:
+        - name: coin2-sub-binance
+          image: vincetran96/coin2:test
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash"]
+          args: ["./scripts/subscribe.sh", "app.fetch.binance"]
+          envFrom:
+          - configMapRef:
+              name: env
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 0.5
+            limits:
+              memory: 128Mi
+              cpu: 1
+      restartPolicy: Always
