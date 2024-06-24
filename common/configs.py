@@ -22,7 +22,7 @@ class Config:
         """Get OS environment variable
 
         Args:
-            key(str):
+            key (str):
 
         Returns:
             variable value

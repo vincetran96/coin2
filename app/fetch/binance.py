@@ -24,23 +24,28 @@ ASYNCIO_SLEEPTIME = 0.05
 
 
 def send_to_kafka(producer: Any, topic: str, data_list: List[dict]):
-    """Send data to Kafka"""
+    """Send data to Kafka
+    Source: https://github.com/confluentinc/confluent-kafka-python
+    """
     for data in data_list:
+        producer.poll(0)
         producer.produce(topic=topic, key=data['symbol'], value=json.dumps(data), callback=acked)
     producer.flush()
     logging.info(f"Finish send data to kafka, num records: {len(data_list)}")
 
 
-def get_symbols() -> List[str]:
+def get_symbols(limit: int = 1000) -> List[str]:
     """Get all symbols
+
+    Args:
+        limit (int): Number of symbols to return
 
     Returns:
         List[str]
     """
     resp = requests.get(f"{HTTP_URI}/exchangeInfo", timeout=60)
     resp.raise_for_status()
-    return [d['symbol'] for d in resp.json()['symbols']][:200]
-    # return ["ETHBTC"]
+    return [d['symbol'] for d in resp.json()['symbols']][:limit]
 
 
 async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
@@ -55,18 +60,18 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                 await con.send(
                     message=json.dumps({"method": "SUBSCRIBE", "params": params, "id": i})
                 )
-                logging.info(f"Connection {i}: Successful")
+                logging.info(f"Connection {i}: Successful, symbols: {symbols}")
 
                 backoff_delay = BACKOFF_MIN_SECS
                 data_list = []
-                async for msg in con:
+                async for msg_ in con:
+                    msg = json.loads(msg_)
                     if len(data_list) >= 100:
                         logging.info("Sending data list to kafka")
                         send_to_kafka(
                             producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
                         )
                         data_list = []
-                    msg = json.loads(await con.recv())
                     if isinstance(msg, dict):
                         if (
                             ("result" in msg and msg["result"])
@@ -86,8 +91,6 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                                 'volume_': msg['k']['v'],
                             }
                             data_list.append(data)
-                            logging.info(f"Data:\n{data}")
-
                     await asyncio.sleep(ASYNCIO_SLEEPTIME)
         except (ConnectionClosed, InvalidStatusCode) as exc:
             logging.error(f"Connection {i}: Raised exception: {exc} - reconnecting...")
@@ -100,19 +103,19 @@ async def subscribe_symbols(symbols: List, batchsize: int = 100):
 
     Default batchsize is 100 symbols
     """
-    await asyncio.gather(
-        *(
-            subscribe_(symbols=symbols[i:i + batchsize], i=int(i / batchsize))
-            for i in range(0, len(symbols), batchsize)
-        )
-    )
+    await asyncio.gather(*(
+        subscribe_(symbols=symbols[i:i + batchsize], i=int(i / batchsize))
+        for i in range(0, len(symbols), batchsize)
+    ))
 
 
-def run_subscribe():
+def run_subscribe(symbols: List[str], batchsize: int):
     """Run subscribe"""
-    asyncio.run(subscribe_symbols(symbols=get_symbols(), batchsize=100))
+    asyncio.run(subscribe_symbols(symbols=symbols, batchsize=batchsize))
 
 
 if __name__ == "__main__":
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
-    run_subscribe()
+    run_subscribe(
+        symbols=get_symbols(), batchsize=100
+    )

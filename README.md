@@ -39,6 +39,7 @@ kubectl create -f k8s/coin2-configmap.yaml
 ```bash
 kubectl apply \
     -f k8s/coin2-init-hb.yaml \
-    -f k8s/coin2-sub-binance.yaml \
+    -f k8s/coin2-fetch-binance.yaml \
+    -f k8s/coin2-insert-binance.yaml \
     -f k8s/coin2-pvc.yaml
 ```
