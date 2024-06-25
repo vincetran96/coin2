@@ -36,8 +36,8 @@ def create_producer() -> Producer:
 
 def create_consumer(
     group_id: str,
+    auto_commit: bool = True,
     auto_offset_reset: str = "earliest",
-    enable_auto_commit: bool = True
 ) -> Consumer:
     """Create a Kafka consumer
     """
@@ -45,8 +45,8 @@ def create_consumer(
         Consumer({
             "bootstrap.servers": "100.71.94.50:9094",
             "group.id": group_id,
-            "auto.offset.reset": auto_offset_reset,
-            "enable.auto.commit": enable_auto_commit
+            "enable.auto.commit": auto_commit,
+            "auto.offset.reset": auto_offset_reset
         })
     )
 
