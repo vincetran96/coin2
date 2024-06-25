@@ -17,15 +17,24 @@ docker compose -f build/kafka.docker-compose.yaml up
 ```
 ### Console commands
 ```bash
+# List topics
 docker run -it --rm --network=host bitnami/kafka:3.6.2 \
     kafka-topics.sh \
     --bootstrap-server localhost:9094 \
-    --list 
+    --list
 
+# Delete a topic
+docker run -it --rm --network=host bitnami/kafka:3.6.2 \
+    kafka-topics.sh \
+    --bootstrap-server localhost:9094 \
+    --delete \
+    --topic TOPIC
+
+# Consume from a topic
 docker run -it --rm --network=host bitnami/kafka:3.6.2 \
     kafka-console-consumer.sh \
     --bootstrap-server localhost:9094 \
-    --topic coin2-ws \
+    --topic TOPIC \
     --from-beginning \
     --property "parse.key=true"
 ```
