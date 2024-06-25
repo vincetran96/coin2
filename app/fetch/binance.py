@@ -12,7 +12,7 @@ import requests
 import websockets
 from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
-from common.consts import LOG_FORMAT
+from common.consts import KAFKA_BATCHSIZE, LOG_FORMAT
 from common.kafka import acked, create_producer
 
 
@@ -26,10 +26,15 @@ ASYNCIO_SLEEPTIME = 0.05
 def send_to_kafka(producer: Any, topic: str, data_list: List[dict]):
     """Send data to Kafka
     Source: https://github.com/confluentinc/confluent-kafka-python
+
+    Args:
+        producer (Producer): Kafka producer
+        topic (str): Topic
+        data_list (List[dict]): List of data
     """
     for data in data_list:
-        producer.poll(0)
-        producer.produce(topic=topic, key=data['symbol'], value=json.dumps(data), callback=acked)
+        producer.poll(timeout=0)
+        producer.produce(topic=topic, key=data['symbol'], value=json.dumps(data))
     producer.flush()
     logging.info(f"Finish send data to kafka, num records: {len(data_list)}")
 
@@ -48,8 +53,12 @@ def get_symbols(limit: int = 1000) -> List[str]:
     return [d['symbol'] for d in resp.json()['symbols']][:limit]
 
 
-async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
+async def subscribe_(symbols: List, con_id: int = 0) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
+
+    Args:
+        symbols (List[str]): List of symbols
+        con_id (int): Connection ID
     """
     backoff_delay = BACKOFF_MIN_SECS
     kafka_producer = create_producer()
@@ -58,20 +67,14 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
             async with websockets.connect(uri=WS_URI) as con:
                 params = [f"{symbol.lower()}@kline_1m" for symbol in symbols]
                 await con.send(
-                    message=json.dumps({"method": "SUBSCRIBE", "params": params, "id": i})
+                    message=json.dumps({"method": "SUBSCRIBE", "params": params, "id": con_id})
                 )
-                logging.info(f"Connection {i}: Successful, symbols: {symbols}")
+                logging.info(f"Connection {con_id}: Successful, symbols: {symbols}")
 
                 backoff_delay = BACKOFF_MIN_SECS
                 data_list = []
                 async for msg_ in con:
                     msg = json.loads(msg_)
-                    if len(data_list) >= 100:
-                        logging.info("Sending data list to kafka")
-                        send_to_kafka(
-                            producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
-                        )
-                        data_list = []
                     if isinstance(msg, dict):
                         if (
                             ("result" in msg and msg["result"])
@@ -91,9 +94,16 @@ async def subscribe_(symbols: List, i: int = 0) -> NoReturn:
                                 'volume_': msg['k']['v'],
                             }
                             data_list.append(data)
+                    if len(data_list) >= KAFKA_BATCHSIZE:
+                        logging.info(f"Connection {con_id}: Sending data list to kafka")
+                        send_to_kafka(
+                            producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
+                        )
+                        data_list = []
                     await asyncio.sleep(ASYNCIO_SLEEPTIME)
+
         except (ConnectionClosed, InvalidStatusCode) as exc:
-            logging.error(f"Connection {i}: Raised exception: {exc} - reconnecting...")
+            logging.error(f"Connection {con_id}: Raised exception: {exc} - reconnecting...")
             await asyncio.sleep(backoff_delay)
             backoff_delay *= (1 + random())
 
@@ -104,7 +114,7 @@ async def subscribe_symbols(symbols: List, batchsize: int = 100):
     Default batchsize is 100 symbols
     """
     await asyncio.gather(*(
-        subscribe_(symbols=symbols[i:i + batchsize], i=int(i / batchsize))
+        subscribe_(symbols=symbols[i:i + batchsize], con_id=int(i / batchsize))
         for i in range(0, len(symbols), batchsize)
     ))
 
@@ -117,5 +127,5 @@ def run_subscribe(symbols: List[str], batchsize: int):
 if __name__ == "__main__":
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
     run_subscribe(
-        symbols=get_symbols(), batchsize=100
+        symbols=get_symbols(limit=None), batchsize=100
     )
