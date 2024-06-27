@@ -12,6 +12,7 @@ _old*
 .bak
 .dat
 .dir
+*.jar
 *.tar
 docker_data/
 bin/
