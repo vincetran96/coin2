@@ -51,13 +51,16 @@ docker run -it --rm --network=host bitnami/kafka:3.6.2 \
 #### Prometheus and Grafana
 - https://www.confluent.io/blog/monitor-kafka-clusters-with-prometheus-grafana-and-confluent/
 - https://medium.com/@oredata-engineering/setting-up-prometheus-grafana-for-kafka-on-docker-8a692a45966c
-- Check the following endpoint for output: http://TAILSCALE_IP:PROMETHEUS_PORT/metrics
-#### Service data export configs
-**Kafka brokers**
-- https://github.com/prometheus/jmx_exporter/blob/release-1.0.1/example_configs/kafka-2_0_0.yml
-- https://gist.githubusercontent.com/baturalpk/fb2e394e2d133d107477bb198ab0a92c/raw/a7917c6f633666ee84e1588d663fde48d6dec640/kafka-broker.yml
-#### JMX jar execution file
-- https://repo.maven.apache.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
+#### Service data export config examples
+**Kafka**
+- *Brokers*
+  - https://github.com/prometheus/jmx_exporter/blob/release-1.0.1/example_configs/kafka-2_0_0.yml
+  - https://gist.githubusercontent.com/baturalpk/fb2e394e2d133d107477bb198ab0a92c/raw/a7917c6f633666ee84e1588d663fde48d6dec640/kafka-broker.yml
+- *Jar execution file to export data*
+  - https://repo.maven.apache.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
+#### After things are up
+- Check the following endpoint for output of a service: http://TAILSCALE_IP:PROMETHEUS_PORT/metrics
+- Check the following endpoint for Prometheus datasources' status: http://TAILSCALE_IP:9090/targets
 ## App k8s deployment
 ### Configs
 ```bash
