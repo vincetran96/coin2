@@ -22,9 +22,9 @@ class Config:
         """Get OS environment variable
 
         Args:
-            key (str):
+            key (str): Environment variable name
 
         Returns:
-            variable value
+            Variable value
         """
         return os.getenv(key)
