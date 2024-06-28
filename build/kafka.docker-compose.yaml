@@ -17,6 +17,7 @@ services:
   coin2-kafka-0:
     image: docker.io/bitnami/kafka:3.6.2
     container_name: coin2-kafka-0
+    hostname: coin2-kafka-0
     restart: always
     ports:
       - "9094:9094"
@@ -34,13 +35,14 @@ services:
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       # JVM params
-      KAFKA_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9200:/usr/share/jmx_exporter/kafka-broker.yml
-    volumes:
-      - ./jmx-exporter:/usr/share/jmx_exporter/
+      # KAFKA_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9200:/usr/share/jmx_exporter/kafka-broker.yml
+    # volumes:
+    #   - ./jmx-exporter:/usr/share/jmx_exporter/
 
   coin2-kafka-1:
     image: docker.io/bitnami/kafka:3.6.2
     container_name: coin2-kafka-1
+    hostname: coin2-kafka-1
     restart: always
     ports:
       - "9095:9095"
@@ -58,13 +60,14 @@ services:
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       # JVM params
-      KAFKA_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9201:/usr/share/jmx_exporter/kafka-broker.yml
-    volumes:
-      - ./jmx-exporter:/usr/share/jmx_exporter/
+      # KAFKA_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9201:/usr/share/jmx_exporter/kafka-broker.yml
+    # volumes:
+    #   - ./jmx-exporter:/usr/share/jmx_exporter/
 
   coin2-kafka-2:
     image: docker.io/bitnami/kafka:3.6.2
     container_name: coin2-kafka-2
+    hostname: coin2-kafka-2
     restart: always
     ports:
       - "9096:9096"
@@ -82,9 +85,26 @@ services:
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       # JVM params
-      KAFKA_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9202:/usr/share/jmx_exporter/kafka-broker.yml
+      # KAFKA_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9202:/usr/share/jmx_exporter/kafka-broker.yml
+    # volumes:
+    #   - ./jmx-exporter:/usr/share/jmx_exporter/
+
+  coin2-kafka-minion:
+    image: redpandadata/kminion:v2.2.8
+    container_name: coin2-kafka-minion
+    hostname: coin2-kafka-minion
+    restart: always
+    depends_on:
+      - coin2-kafka-0
+      - coin2-kafka-1
+      - coin2-kafka-2
+    ports:
+      - "9203:9203"
+    environment:
+      CONFIG_FILEPATH: /opt/kminion/kminion-config.yaml
     volumes:
-      - ./jmx-exporter:/usr/share/jmx_exporter/
+      - ./kminion:/opt/kminion/
+    
 
   # schema-registry:
   #   image: confluentinc/cp-schema-registry:7.5.1
@@ -95,13 +115,13 @@ services:
   #     - coin2-kafka-2
   #   ports:
   #     - "8081:8081"
-  #     - "9203:9200"
+  #     - "9203:9203"
   #   environment:
   #     SCHEMA_REGISTRY_HOST_NAME: schema-registry
   #     SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092"
   #     SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
   #     SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-  #     SCHEMA_REGISTRY_JMX_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9200:/usr/share/jmx_exporter/confluent_schemaregistry.yml
+  #     SCHEMA_REGISTRY_JMX_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9203:/usr/share/jmx_exporter/confluent_schemaregistry.yml
   #   volumes:
   #     - ./jmx-exporter:/usr/share/jmx_exporter/
 
@@ -115,7 +135,7 @@ services:
   #     - schema-registry
   #   ports:
   #     - "8083:8083"
-  #     - "9204:9200"
+  #     - "9204:9204"
   #   environment:
   #     CONNECT_BOOTSTRAP_SERVERS: "coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092"
   #     CONNECT_REST_ADVERTISED_HOST_NAME: connect
@@ -135,7 +155,7 @@ services:
   #     CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
   #     CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
   #     CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
-  #     KAFKA_JMX_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9200:/usr/share/jmx_exporter/kafka-connect.yml
+  #     KAFKA_JMX_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.20.0.jar=9204:/usr/share/jmx_exporter/kafka-connect.yml
   #   volumes:
   #     - "./schemas:/app/schemas"
   #     - ./jmx-exporter:/usr/share/jmx_exporter/

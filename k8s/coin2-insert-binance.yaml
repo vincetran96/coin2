@@ -9,7 +9,7 @@ metadata:
   namespace: coin2
   name: coin2-insert-binance
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: coin2
