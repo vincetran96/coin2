@@ -24,6 +24,8 @@ logger:
 kafka:
   brokers:
     - coin2-kafka-0:9092
+    - coin2-kafka-1:9092
+    - coin2-kafka-2:9092
   clientId: "kminion"
   rackId: ""
   tls:
@@ -78,11 +80,11 @@ minion:
     #     - Enables kminion_kafka_consumer_group_offset_commits_total metrics.
     #     - Processing the offsetsTopic requires slightly more memory and cpu than using the adminApi. The amount depends on the
     #       size and throughput of the offsets topic.
-    scrapeMode: offsetsTopic # Valid values: adminApi, offsetsTopic
+    scrapeMode: adminApi # Valid values: adminApi, offsetsTopic
     # Granularity can be per topic or per partition. If you want to reduce the number of exported metric series and
     # you aren't interested in per partition lags you could choose "topic" where all partition lags will be summed
     # and only topic lags will be exported.
-    granularity: partition
+    granularity: topic
     # AllowedGroups are regex strings of group ids that shall be exported
     # You can specify allowed groups by providing literals like "my-consumergroup-name" or by providing regex expressions
     # like "/internal-.*/".
