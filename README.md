@@ -13,7 +13,7 @@ chmod +x build/local-k8s-repo.sh
 ## Kafka
 ### Setup cluster
 ```bash
-docker compose -f build/kafka.docker-compose.yaml up
+docker compose -f build/kafka.docker-compose.yaml up --force-recreate
 ```
 ### Console commands
 ```bash
@@ -37,6 +37,20 @@ docker run -it --rm --network=host bitnami/kafka:3.6.2 \
     --topic TOPIC \
     --from-beginning \
     --property "parse.key=true"
+
+# Describe a topic
+docker run -it --rm --network=host bitnami/kafka:3.6.2 \
+    kafka-topics.sh \
+    --bootstrap-server localhost:9094 \
+    --describe \
+    --topic TOPIC
+
+# Check access rights
+docker run -it --rm --network=host bitnami/kafka:3.6.2 \
+    kafka-acls.sh \
+    --bootstrap-server localhost:9094 \
+    --list \
+    --topic TOPIC
 ```
 ### Prometheus
 #### UFW config
