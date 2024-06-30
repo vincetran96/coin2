@@ -32,9 +32,9 @@ spec:
               name: env
           resources:
             requests:
-              memory: 16Mi
+              memory: 8Mi
               cpu: 0.1
             limits:
-              memory: 32Mi
+              memory: 16Mi
               cpu: 0.25
       restartPolicy: Always
