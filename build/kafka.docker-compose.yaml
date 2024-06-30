@@ -21,7 +21,6 @@ services:
     restart: always
     ports:
       - "9094:9094"
-      - "9200:9200"
     environment:
       # KRaft settings
       KAFKA_CFG_NODE_ID: 0
@@ -46,7 +45,6 @@ services:
     restart: always
     ports:
       - "9095:9095"
-      - "9201:9201"
     environment:
       # KRaft settings
       KAFKA_CFG_NODE_ID: 1
@@ -71,7 +69,6 @@ services:
     restart: always
     ports:
       - "9096:9096"
-      - "9202:9202"
     environment:
       # KRaft settings
       KAFKA_CFG_NODE_ID: 2
@@ -99,7 +96,7 @@ services:
       - coin2-kafka-1
       - coin2-kafka-2
     ports:
-      - "9203:9203"
+      - "9200:9200"
     environment:
       CONFIG_FILEPATH: /opt/kminion/kminion-config.yaml
     volumes:
