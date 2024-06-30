@@ -1987,33 +1987,6 @@
       },
       {
         "current": {
-          "selected": true,
-          "text": "ws-binance",
-          "value": "ws-binance"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
-        },
-        "definition": "label_values(kminion_kafka_topic_low_water_mark_sum, topic_name)",
-        "hide": 0,
-        "includeAll": false,
-        "label": "Topic",
-        "multi": false,
-        "name": "topic",
-        "options": [],
-        "query": "label_values(kminion_kafka_topic_low_water_mark_sum, topic_name)",
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "current": {
           "selected": false,
           "text": "ws-consumer",
           "value": "ws-consumer"
@@ -2035,6 +2008,32 @@
         "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(kminion_kafka_consumer_group_topic_lag{group_id=\"$consumerGroup\"}, topic_name)",
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Topic",
+        "multi": false,
+        "name": "topic",
+        "options": [],
+        "query": "label_values(kminion_kafka_consumer_group_topic_lag{group_id=\"$consumerGroup\"}, topic_name)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
         "tagsQuery": "",
         "type": "query",
         "useTags": false
