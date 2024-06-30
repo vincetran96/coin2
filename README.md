@@ -67,13 +67,18 @@ docker run -it --rm --network=host bitnami/kafka:3.6.2 \
 - https://medium.com/@oredata-engineering/setting-up-prometheus-grafana-for-kafka-on-docker-8a692a45966c
 #### Service data export config examples
 **Kafka**
+
+**1. KMinion**
+- https://github.com/redpanda-data/kminion/tree/master
+
+**2. JMX**
 - *Brokers*
   - https://github.com/prometheus/jmx_exporter/blob/release-1.0.1/example_configs/kafka-2_0_0.yml
   - https://gist.githubusercontent.com/baturalpk/fb2e394e2d133d107477bb198ab0a92c/raw/a7917c6f633666ee84e1588d663fde48d6dec640/kafka-broker.yml
 - *Jar execution file to export data*
   - https://repo.maven.apache.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
 #### After things are up
-- Check the following endpoint for output of a service: http://TAILSCALE_IP:PROMETHEUS_PORT/metrics
+- Check the following endpoint for output of a service: http://TAILSCALE_IP:EXPORT_PORT/metrics
 - Check the following endpoint for Prometheus datasources' status: http://TAILSCALE_IP:9090/targets
 ## App k8s deployment
 ### Configs
@@ -84,6 +89,7 @@ kubectl create -f k8s/coin2-configmap.yaml
 ### Start app
 ```bash
 kubectl apply \
+    -f k8s/coin2-heartbeat.yaml \
     -f k8s/coin2-fetch-binance.yaml \
     -f k8s/coin2-insert-binance.yaml \
     -f k8s/coin2-pvc.yaml
