@@ -22,6 +22,7 @@ WS_URI = "wss://stream.binance.com:9443/ws"  # Use OS env var
 KAFKA_TOPIC = "ws-binance"  # Use OS env var
 BACKOFF_MIN_SECS = 2.0
 ASYNCIO_SLEEPTIME = 0.05
+MAX_SYMBOLS_PER_CONNECTION = 100
 
 
 def get_symbols(limit: int = 1000) -> List[str]:
@@ -32,6 +33,7 @@ def get_symbols(limit: int = 1000) -> List[str]:
 
     Returns:
         List[str]
+
     """
     resp = requests.get(f"{HTTP_URI}/exchangeInfo", timeout=60)
     resp.raise_for_status()
@@ -44,6 +46,7 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
     Args:
         symbols (List[str]): List of symbols
         con_id (int): Connection ID
+
     """
     backoff_delay = BACKOFF_MIN_SECS
     kafka_producer = create_producer()
@@ -73,6 +76,7 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
                             logging.warning("Something wrong with received msg, skip it")
                         else:
                             data = {
+                                'exchange': 'binance',
                                 'symbol': msg['s'],
                                 'timestamp': int(msg['k']['t']),
                                 'open_': msg['k']['o'],
@@ -118,5 +122,5 @@ def run_subscribe(symbols: List[str], batchsize: int):
 if __name__ == "__main__":
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
     run_subscribe(
-        symbols=get_symbols(limit=None), batchsize=100
+        symbols=get_symbols(limit=None), batchsize=MAX_SYMBOLS_PER_CONNECTION
     )

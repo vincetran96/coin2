@@ -49,6 +49,7 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     Args:
         symbols (List[str]): List of symbols
         con_id (int): Connection ID
+
     """
     backoff_delay = BACKOFF_MIN_SECS
     kafka_producer = create_producer()
@@ -83,6 +84,7 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
                     elif isinstance(msg, list):
                         if len(msg) == 2 and len(msg[1]) == 6:
                             data = {
+                                'exchange': 'bitfinex',
                                 'symbol': channel_symbol[msg[0]],
                                 'timestamp': int(msg[1][0]),
                                 'open_': msg[1][1],
@@ -91,7 +93,6 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
                                 'close_': msg[1][2],
                                 'volume_': msg[1][5],
                             }
-                            # logging.info(f"Data: {data}")
                             data_list.append(data)
                     if len(data_list) >= KAFKA_BATCHSIZE:
                         logging.info(f"Connection {con_id}: Sending data list to kafka")
@@ -131,10 +132,8 @@ def run_subscribe_threads(symbols: List[str], batchsize: int):
                     con_id=int(i / batchsize)
                 )
             )
-            logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS}s")
+            logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS}s")  # Delay submitting futures
             time.sleep(SLEEP_BETWEEN_CONNECTIONS)
-        # for future in futures:
-        #     future.result()
 
 
 if __name__ == "__main__":
