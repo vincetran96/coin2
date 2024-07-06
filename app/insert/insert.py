@@ -8,19 +8,18 @@ from typing import List, NoReturn
 
 from common.consts import KAFKA_BATCHSIZE, LOG_FORMAT
 from common.kafka import create_consumer
-
-
-KAFKA_TOPIC = "ws-binance"  # Use OS env var
+from app.configs import KAFKA_FETCH_TOPICS
 
 
 def consume_from_kafka(topics: List[str], group_id: str, timeout: float, batchsize: int) -> NoReturn:
-    """Consume from Kafka
+    """Consume websocket data from Kafka
     Source: https://github.com/confluentinc/confluent-kafka-python
 
     Args:
         topics (List[str]): List of topics
         group_id (str): group ID of this consumer
         timeout (float): timeout when polling a message
+
     """
     with create_consumer(group_id=group_id, auto_commit=False) as consumer:
         consumer.subscribe(topics)
@@ -45,10 +44,12 @@ def consume_from_kafka(topics: List[str], group_id: str, timeout: float, batchsi
                 start_ts = time.monotonic()
                 consumer.commit()
                 logging.info(
-                    f"Processed {batchsize} msg in {elapsed_ts:.2f} secs ({batchsize/elapsed_ts:.2f} msg/s)"
+                    f"Processed {batchsize} msg in {elapsed_ts:.2f} secs ({batchsize / elapsed_ts:.2f} msg/s)"
                 )
 
 
 if __name__ == "__main__":
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
-    consume_from_kafka(topics=[KAFKA_TOPIC], group_id="ws-consumer", timeout=1.0, batchsize=KAFKA_BATCHSIZE)
+    consume_from_kafka(
+        topics=KAFKA_FETCH_TOPICS, group_id="ws-consumer", timeout=1.0, batchsize=KAFKA_BATCHSIZE
+    )
