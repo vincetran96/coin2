@@ -6,14 +6,15 @@ import asyncio
 import json
 import logging
 from random import random
-from typing import Any, List, NoReturn
+from typing import List, NoReturn
 
 import requests
 import websockets
 from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
 from common.consts import KAFKA_BATCHSIZE, LOG_FORMAT
-from common.kafka import acked, create_producer
+from common.kafka import create_producer
+from app.fetch.kafka import send_to_kafka
 
 
 HTTP_URI = "https://api.binance.com/api/v3"  # Use OS env var
@@ -21,22 +22,6 @@ WS_URI = "wss://stream.binance.com:9443/ws"  # Use OS env var
 KAFKA_TOPIC = "ws-binance"  # Use OS env var
 BACKOFF_MIN_SECS = 2.0
 ASYNCIO_SLEEPTIME = 0.05
-
-
-def send_to_kafka(producer: Any, topic: str, data_list: List[dict]):
-    """Send data to Kafka
-    Source: https://github.com/confluentinc/confluent-kafka-python
-
-    Args:
-        producer (Producer): Kafka producer
-        topic (str): Topic
-        data_list (List[dict]): List of data
-    """
-    for data in data_list:
-        producer.poll(timeout=0)
-        producer.produce(topic=topic, key=data['symbol'], value=json.dumps(data))
-    producer.flush()
-    logging.info(f"Finish send data to kafka, num records: {len(data_list)}")
 
 
 def get_symbols(limit: int = 1000) -> List[str]:
@@ -53,7 +38,7 @@ def get_symbols(limit: int = 1000) -> List[str]:
     return [d['symbol'] for d in resp.json()['symbols']][:limit]
 
 
-async def subscribe_(symbols: List, con_id: int = 0) -> NoReturn:
+async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
 
     Args:
@@ -65,9 +50,12 @@ async def subscribe_(symbols: List, con_id: int = 0) -> NoReturn:
     while True:
         try:
             async with websockets.connect(uri=WS_URI) as con:
-                params = [f"{symbol.lower()}@kline_1m" for symbol in symbols]
                 await con.send(
-                    message=json.dumps({"method": "SUBSCRIBE", "params": params, "id": con_id})
+                    message=json.dumps({
+                        "method": "SUBSCRIBE",
+                        "params": [f"{symbol.lower()}@kline_1m" for symbol in symbols],
+                        "id": con_id
+                    })
                 )
                 logging.info(f"Connection {con_id}: Successful, symbols: {symbols}")
 
@@ -108,19 +96,22 @@ async def subscribe_(symbols: List, con_id: int = 0) -> NoReturn:
             backoff_delay *= (1 + random())
 
 
-async def subscribe_symbols(symbols: List, batchsize: int = 100):
-    """Subscribe to symbols in batch
-
-    Default batchsize is 100 symbols
-    """
+async def subscribe_symbols(symbols: List, batchsize: int):
+    """Subscribe to symbols in batch"""
     await asyncio.gather(*(
-        subscribe_(symbols=symbols[i:i + batchsize], con_id=int(i / batchsize))
+        _subscribe(symbols=symbols[i:i + batchsize], con_id=int(i / batchsize))
         for i in range(0, len(symbols), batchsize)
     ))
 
 
 def run_subscribe(symbols: List[str], batchsize: int):
-    """Run subscribe"""
+    """Run subscribe
+
+    Args:
+        symbols (List[str]): List of symbols
+        batchsize (int): Number of symbols to subscribe per connection
+
+    """
     asyncio.run(subscribe_symbols(symbols=symbols, batchsize=batchsize))
 
 
