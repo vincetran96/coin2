@@ -94,3 +94,13 @@ kubectl apply \
     -f k8s/coin2-insert.yaml \
     -f k8s/coin2-pvc.yaml
 ```
+
+
+# Debugging
+```bash
+# Start k8s things
+./scripts/k8s-start.sh
+
+# Stop k8s things
+./scripts/k8s-shutdown.sh
+```
