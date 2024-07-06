@@ -7,7 +7,7 @@ metadata:
   labels:
     app: coin2
   namespace: coin2
-  name: coin2-fetch-binance
+  name: coin2-fetch
 spec:
   replicas: 1
   selector:
@@ -36,6 +36,21 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["/bin/bash"]
           args: ["./scripts/py-module.sh", "app.fetch.binance"]
+          envFrom:
+          - configMapRef:
+              name: env
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 1
+            limits:
+              memory: 128Mi
+              cpu: 1
+        - name: coin2-fetch-bitfinex
+          image: vincetran96/coin2:test
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash"]
+          args: ["./scripts/py-module.sh", "app.fetch.bitfinex"]
           envFrom:
           - configMapRef:
               name: env

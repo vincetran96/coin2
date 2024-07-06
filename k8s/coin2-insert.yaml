@@ -26,7 +26,7 @@ spec:
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
           command: ["/bin/bash"]
-          args: ["./scripts/py-module.sh", "app.insert.binance"]
+          args: ["./scripts/py-module.sh", "app.insert.insert"]
           envFrom:
           - configMapRef:
               name: env
