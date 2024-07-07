@@ -117,7 +117,11 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
 
 
 def run_subscribe(symbols: List[str], con_id: int):
-    """Run a single subscribe connection"""
+    """Run a single subscribe connection
+
+    i.e., subscribe to `symbols` with a new connection
+
+    """
     asyncio.run(_subscribe(symbols=symbols, con_id=con_id))
 
 
@@ -146,6 +150,18 @@ def run_subscribe_threads(symbols: List[str], batchsize: int):
 
 if __name__ == "__main__":
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
-    run_subscribe_threads(
-        symbols=get_symbols(limit=None), batchsize=MAX_SYMBOLS_PER_CONNECTION
-    )
+    symbols = get_symbols(limit=None)
+    batchsize = MAX_SYMBOLS_PER_CONNECTION
+    max_workers = math.ceil(len(symbols) / batchsize)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for i in range(0, len(symbols), batchsize):
+            futures.append(
+                executor.submit(
+                    run_subscribe,
+                    symbols=symbols[i:i + batchsize],
+                    con_id=int(i / batchsize)
+                )
+            )
+            logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS:.2f}s")  # Delay submitting futures
+            time.sleep(SLEEP_BETWEEN_CONNECTIONS)

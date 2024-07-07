@@ -109,26 +109,22 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
 
 
 async def subscribe_symbols(symbols: List, batchsize: int):
-    """Subscribe to symbols in batch"""
+    """Subscribe to symbols in batch
+
+    For every `batchsize` symbols, create a new connection and
+    subscribe to those symbols
+
+    """
     await asyncio.gather(*(
         _subscribe(symbols=symbols[i:i + batchsize], con_id=int(i / batchsize))
         for i in range(0, len(symbols), batchsize)
     ))
 
 
-def run_subscribe(symbols: List[str], batchsize: int):
-    """Run subscribe
-
-    Args:
-        symbols (List[str]): List of symbols
-        batchsize (int): Number of symbols to subscribe per connection
-
-    """
-    asyncio.run(subscribe_symbols(symbols=symbols, batchsize=batchsize))
-
-
 if __name__ == "__main__":
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
-    run_subscribe(
-        symbols=get_symbols(limit=None), batchsize=MAX_SYMBOLS_PER_CONNECTION
+    asyncio.run(
+        subscribe_symbols(
+            symbols=get_symbols(limit=None), batchsize=MAX_SYMBOLS_PER_CONNECTION
+        )
     )
