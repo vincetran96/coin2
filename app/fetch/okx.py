@@ -51,6 +51,8 @@ def get_symbols(limit: int = 1000, inst_type: str = "SPOT") -> List[str]:
 
 async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
+    Source:
+      - https://www.okx.com/docs-v5/en/#order-book-trading-market-data-ws-candlesticks-channel
 
     For each message received,
       - Check for the confirmation of whether our subscribe message is successful
@@ -71,7 +73,7 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
                     "op": "subscribe",
                     "args": [
                         {
-                            "channel": "candle1m",
+                            "channel": "candle1s",
                             "instId": symbol
                         }
                         for symbol in symbols
@@ -88,7 +90,7 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
                     if msg["event"] == "subscribe":
                         pass
                     else:
-                        raise ValueError("Something wrong with our subscribe msg")
+                        raise ValueError(f"Something wrong with our subscribe msg:\n{msg}")
                 else:
                     data = {
                         'exchange': 'okx',
