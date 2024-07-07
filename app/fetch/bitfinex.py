@@ -11,7 +11,7 @@ import math
 import time
 from concurrent.futures import ThreadPoolExecutor
 from random import random
-from typing import Any, List, NoReturn
+from typing import List, NoReturn
 
 import requests
 import websockets
@@ -49,6 +49,8 @@ def get_symbols(limit: int = 1000) -> List[str]:
 
 async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
+    Source:
+      - https://docs.bitfinex.com/reference/ws-public-candles
 
     For each message received,
       - Check for the confirmation of whether our subscribe message is successful
@@ -82,8 +84,14 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
                 if "event" in msg:
                     if msg["event"] == "subscribed":
                         channel_symbol[msg["chanId"]] = msg["key"]
+                    elif msg["event"] == "info":
+                        pass
                     else:
-                        raise ValueError("Something wrong with our subscribe msg")
+                        raise ValueError(f"Something wrong with our subscribe msg:\n{msg}")
+                elif msg[1] == "hb":
+                    pass
+                elif isinstance(msg[1], list) and isinstance(msg[1][0], list):
+                    pass
                 else:
                     data = {
                         'exchange': 'bitfinex',
