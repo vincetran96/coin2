@@ -40,12 +40,9 @@ spec:
           - configMapRef:
               name: env
           resources:
-            requests:
-              memory: 64Mi
-              cpu: 1
             limits:
               memory: 128Mi
-              cpu: 1
+              cpu: 0.5
         - name: coin2-fetch-bitfinex
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
@@ -55,10 +52,31 @@ spec:
           - configMapRef:
               name: env
           resources:
-            requests:
-              memory: 64Mi
-              cpu: 1
             limits:
               memory: 128Mi
-              cpu: 1
+              cpu: 0.5
+        - name: coin2-fetch-bybit
+          image: vincetran96/coin2:test
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash"]
+          args: ["./scripts/py-module.sh", "app.fetch.bybit"]
+          envFrom:
+          - configMapRef:
+              name: env
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: 0.5
+        - name: coin2-fetch-okx
+          image: vincetran96/coin2:test
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash"]
+          args: ["./scripts/py-module.sh", "app.fetch.okx"]
+          envFrom:
+          - configMapRef:
+              name: env
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: 0.5
       restartPolicy: Always

@@ -9,7 +9,7 @@ metadata:
   namespace: coin2
   name: coin2-insert-binance
 spec:
-  replicas: 3
+  replicas: 4
   selector:
     matchLabels:
       app: coin2
@@ -22,7 +22,7 @@ spec:
         app: coin2
     spec:
       containers:
-        - name: coin2-insert-binance
+        - name: coin2-insert
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
           command: ["/bin/bash"]
@@ -31,10 +31,7 @@ spec:
           - configMapRef:
               name: env
           resources:
-            requests:
-              memory: 32Mi
-              cpu: 0.5
             limits:
               memory: 64Mi
-              cpu: 1
+              cpu: 0.25
       restartPolicy: Always
