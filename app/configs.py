@@ -2,5 +2,6 @@
 """
 KAFKA_FETCH_TOPICS = [
     "ws-binance",
-    "ws-bitfinex"
+    "ws-bitfinex",
+    "ws-okx"
 ]
