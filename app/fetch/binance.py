@@ -134,10 +134,12 @@ if __name__ == "__main__":
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for i in range(0, len(symbols), batchsize):
-            executor.submit(
-                run_subscribe,
-                symbols=symbols[i:i + batchsize],
-                con_id=int(i / batchsize)
+            futures.append(
+                executor.submit(
+                    run_subscribe,
+                    symbols=symbols[i:i + batchsize],
+                    con_id=int(i / batchsize)
+                )
             )
             logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS:.2f}s")  # Delay submitting futures
             time.sleep(SLEEP_BETWEEN_CONNECTIONS)
