@@ -7,7 +7,7 @@ metadata:
   labels:
     app: coin2
   namespace: coin2
-  name: coin2-insert-binance
+  name: coin2-insert
 spec:
   replicas: 4
   selector:
