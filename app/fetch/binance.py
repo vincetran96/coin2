@@ -14,14 +14,14 @@ from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
 from common.consts import KAFKA_BATCHSIZE, LOG_FORMAT
 from common.kafka import create_producer
+from app.consts import ASYNCIO_SLEEP, REST_TIMEOUT
 from app.fetch.kafka import send_to_kafka
 
 
-HTTP_URI = "https://api.binance.com/api/v3"  # Use OS env var
-WS_URI = "wss://stream.binance.com:9443/ws"  # Use OS env var
+HTTP_URI = "https://api.binance.com/api/v3"
+WS_URI = "wss://stream.binance.com:9443/ws"
 KAFKA_TOPIC = "ws-binance"  # Use OS env var
-BACKOFF_MIN_SECS = 2.0
-ASYNCIO_SLEEPTIME = 0.05
+BACKOFF_TIME = 2.0
 MAX_SYMBOLS_PER_CONNECTION = 100
 
 
@@ -35,7 +35,7 @@ def get_symbols(limit: int = 1000) -> List[str]:
         List[str]
 
     """
-    resp = requests.get(f"{HTTP_URI}/exchangeInfo", timeout=60)
+    resp = requests.get(f"{HTTP_URI}/exchangeInfo", timeout=REST_TIMEOUT)
     resp.raise_for_status()
     return [d['symbol'] for d in resp.json()['symbols']][:limit]
 
@@ -48,7 +48,7 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
         con_id (int): Connection ID
 
     """
-    backoff_delay = BACKOFF_MIN_SECS
+    backoff_delay = BACKOFF_TIME
     kafka_producer = create_producer()
     while True:
         try:
@@ -56,13 +56,16 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
                 await con.send(
                     message=json.dumps({
                         "method": "SUBSCRIBE",
-                        "params": [f"{symbol.lower()}@kline_1m" for symbol in symbols],
-                        "id": con_id
+                        "id": con_id,
+                        "params": [
+                            f"{symbol.lower()}@kline_1m"
+                            for symbol in symbols
+                        ]
                     })
                 )
-                logging.info(f"Connection {con_id}: Successful, symbols: {symbols}")
+                logging.info(f"Connection {con_id}: Successful, num symbols: {len(symbols)}")
 
-                backoff_delay = BACKOFF_MIN_SECS
+                backoff_delay = BACKOFF_TIME
                 data_list = []
                 async for msg_ in con:
                     msg = json.loads(msg_)
@@ -73,7 +76,7 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
                         ):
                             raise ValueError("Something wrong with our subscribe msg")
                         elif "s" not in msg:
-                            logging.warning("Something wrong with received msg, skip it")
+                            logging.warning(f"Received non-error msg, probably confirmation:\n{msg}")
                         else:
                             data = {
                                 'exchange': 'binance',
@@ -86,13 +89,16 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
                                 'volume_': msg['k']['v'],
                             }
                             data_list.append(data)
+                    else:
+                        # Send the remaining data_list to kafka?
+                        raise ValueError(f"Something wrong with received msg:\n{msg}")
                     if len(data_list) >= KAFKA_BATCHSIZE:
                         logging.info(f"Connection {con_id}: Sending data list to kafka")
                         send_to_kafka(
                             producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
                         )
                         data_list = []
-                    await asyncio.sleep(ASYNCIO_SLEEPTIME)
+                    await asyncio.sleep(ASYNCIO_SLEEP)
 
         except (ConnectionClosed, InvalidStatusCode) as exc:
             logging.error(f"Connection {con_id}: Raised exception: {exc} - reconnecting...")

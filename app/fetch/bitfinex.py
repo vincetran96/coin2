@@ -17,14 +17,14 @@ from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
 from common.consts import KAFKA_BATCHSIZE, LOG_FORMAT
 from common.kafka import create_producer
+from app.consts import ASYNCIO_SLEEP, REST_TIMEOUT
 from app.fetch.kafka import send_to_kafka
 
 
 HTTP_URI = "https://api-pub.bitfinex.com/v2"  # Use OS env var
 WS_URI = "wss://api-pub.bitfinex.com/ws/2"  # Use OS env var
 KAFKA_TOPIC = "ws-bitfinex"  # Use OS env var
-BACKOFF_MIN_SECS = 3.0
-ASYNCIO_SLEEPTIME = 0.05
+BACKOFF_TIME = 3.0
 SLEEP_BETWEEN_CONNECTIONS = 3  # Each minute is limited to 20 connections
 MAX_CHANNELS_PER_CONNECTION = 25
 
@@ -37,8 +37,9 @@ def get_symbols(limit: int = 1000) -> List[str]:
 
     Returns:
         List[str]
+
     """
-    resp = requests.get(f"{HTTP_URI}/conf/pub:list:pair:exchange", timeout=60)
+    resp = requests.get(f"{HTTP_URI}/conf/pub:list:pair:exchange", timeout=REST_TIMEOUT)
     resp.raise_for_status()
     return resp.json()[0][:limit]
 
@@ -51,7 +52,7 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
         con_id (int): Connection ID
 
     """
-    backoff_delay = BACKOFF_MIN_SECS
+    backoff_delay = BACKOFF_TIME
     kafka_producer = create_producer()
     channel_symbol = {}
 
@@ -69,9 +70,9 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
         try:
             async with websockets.connect(uri=WS_URI) as con:
                 await asyncio.gather(*(_subscribe_one(symbol, con) for symbol in symbols))
-                logging.info(f"Connection {con_id}: Successful, symbols: {symbols}")
+                logging.info(f"Connection {con_id}: Successful, num symbols: {len(symbols)}")
 
-                backoff_delay = BACKOFF_MIN_SECS
+                backoff_delay = BACKOFF_TIME
                 data_list = []
                 async for msg_ in con:
                     msg = json.loads(msg_)
@@ -94,13 +95,16 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
                                 'volume_': msg[1][5],
                             }
                             data_list.append(data)
+                    else:
+                        # Send the remaining data_list to kafka?
+                        raise ValueError(f"Something wrong with received msg:\n{msg}")
                     if len(data_list) >= KAFKA_BATCHSIZE:
                         logging.info(f"Connection {con_id}: Sending data list to kafka")
                         send_to_kafka(
                             producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
                         )
                         data_list = []
-                    await asyncio.sleep(ASYNCIO_SLEEPTIME)
+                    await asyncio.sleep(ASYNCIO_SLEEP)
 
         except (ConnectionClosed, InvalidStatusCode) as exc:
             logging.error(f"Connection {con_id}: Raised exception: {exc} - reconnecting...")
@@ -132,7 +136,7 @@ def run_subscribe_threads(symbols: List[str], batchsize: int):
                     con_id=int(i / batchsize)
                 )
             )
-            logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS}s")  # Delay submitting futures
+            logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS:.2f}s")  # Delay submitting futures
             time.sleep(SLEEP_BETWEEN_CONNECTIONS)
 
 
