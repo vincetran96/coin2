@@ -1,4 +1,6 @@
 """Fetch data from Bitfinex
+
+Rate limit: https://docs.bitfinex.com/docs/requirements-and-limitations#websocket-rate-limits
 """
 # pylint: disable-all
 # noqa: E501
@@ -66,45 +68,44 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
             })
         )
 
-    while True:
+    async for con in websockets.connect(uri=WS_URI):
         try:
-            async with websockets.connect(uri=WS_URI) as con:
-                await asyncio.gather(*(_subscribe_one(symbol, con) for symbol in symbols))
-                logging.info(f"Connection {con_id}: Successful, num symbols: {len(symbols)}")
+            await asyncio.gather(*(_subscribe_one(symbol, con) for symbol in symbols))
+            logging.info(f"Connection {con_id}: Successful, num symbols: {len(symbols)}")
 
-                backoff_delay = BACKOFF_TIME
-                data_list = []
-                async for msg_ in con:
-                    msg = json.loads(msg_)
-                    if isinstance(msg, dict):
-                        if "event" in msg:
-                            if msg["event"] == "subscribed":
-                                channel_symbol[msg["chanId"]] = msg["key"]
-                            elif msg["event"] == "error":
-                                raise ValueError("Something wrong with our subscribe msg")
-                    elif isinstance(msg, list):
-                        if len(msg) == 2 and len(msg[1]) == 6:
-                            data = {
-                                'exchange': 'bitfinex',
-                                'symbol': channel_symbol[msg[0]],
-                                'timestamp': int(msg[1][0]),
-                                'open_': msg[1][1],
-                                'high_': msg[1][3],
-                                'low_': msg[1][4],
-                                'close_': msg[1][2],
-                                'volume_': msg[1][5],
-                            }
-                            data_list.append(data)
-                    else:
-                        # Send the remaining data_list to kafka?
-                        raise ValueError(f"Something wrong with received msg:\n{msg}")
-                    if len(data_list) >= KAFKA_BATCHSIZE:
-                        logging.info(f"Connection {con_id}: Sending data list to kafka")
-                        send_to_kafka(
-                            producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
-                        )
-                        data_list = []
-                    await asyncio.sleep(ASYNCIO_SLEEP)
+            backoff_delay = BACKOFF_TIME
+            data_list = []
+            async for msg_ in con:
+                msg = json.loads(msg_)
+                if isinstance(msg, dict):
+                    if "event" in msg:
+                        if msg["event"] == "subscribed":
+                            channel_symbol[msg["chanId"]] = msg["key"]
+                        elif msg["event"] == "error":
+                            raise ValueError("Something wrong with our subscribe msg")
+                elif isinstance(msg, list):
+                    if len(msg) == 2 and len(msg[1]) == 6:
+                        data = {
+                            'exchange': 'bitfinex',
+                            'symbol': channel_symbol[msg[0]],
+                            'timestamp': int(msg[1][0]),
+                            'open_': msg[1][1],
+                            'high_': msg[1][3],
+                            'low_': msg[1][4],
+                            'close_': msg[1][2],
+                            'volume_': msg[1][5],
+                        }
+                        data_list.append(data)
+                else:
+                    # Send the remaining data_list to kafka?
+                    raise ValueError(f"Something wrong with received msg:\n{msg}")
+                if len(data_list) >= KAFKA_BATCHSIZE:
+                    logging.info(f"Connection {con_id}: Sending data list to kafka")
+                    send_to_kafka(
+                        producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
+                    )
+                    data_list = []
+                await asyncio.sleep(ASYNCIO_SLEEP)
 
         except (ConnectionClosed, InvalidStatusCode) as exc:
             logging.error(f"Connection {con_id}: Raised exception: {exc} - reconnecting...")
