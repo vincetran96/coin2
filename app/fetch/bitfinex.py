@@ -125,14 +125,11 @@ if __name__ == "__main__":
     batchsize = MAX_CHANNELS_PER_CONNECTION
     max_workers = math.ceil(len(symbols) / batchsize)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
         for i in range(0, len(symbols), batchsize):
-            futures.append(
-                executor.submit(
-                    run_subscribe,
-                    symbols=symbols[i:i + batchsize],
-                    con_id=int(i / batchsize)
-                )
+            executor.submit(
+                run_subscribe,
+                symbols=symbols[i:i + batchsize],
+                con_id=int(i / batchsize)
             )
             logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS:.2f}s")  # Delay submitting futures
             time.sleep(SLEEP_BETWEEN_CONNECTIONS)
