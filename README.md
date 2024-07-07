@@ -78,8 +78,8 @@ docker run -it --rm --network=host bitnami/kafka:3.6.2 \
 - *Jar execution file to export data*
   - https://repo.maven.apache.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
 #### After things are up
-- Check the following endpoint for output of a service: http://TAILSCALE_IP:EXPORT_PORT/metrics
-- Check the following endpoint for Prometheus datasources' status: http://TAILSCALE_IP:9090/targets
+- Check the following endpoint for output of a service: `http://TAILSCALE_IP:EXPORT_PORT/metrics`
+- Check the following endpoint for Prometheus datasources' status: `http://TAILSCALE_IP:9090/targets`
 ## App k8s deployment
 ### Configs
 ```bash
