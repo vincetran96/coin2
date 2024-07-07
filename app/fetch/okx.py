@@ -52,6 +52,10 @@ def get_symbols(limit: int = 1000, inst_type: str = "SPOT") -> List[str]:
 async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
 
+    For each message received,
+      - Check for the confirmation of whether our subscribe message is successful
+      - Else, process the data
+
     Args:
         symbols (List[str]): List of symbols
         con_id (int): Connection ID
@@ -80,28 +84,23 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
             data_list = []
             async for msg_ in con:
                 msg = json.loads(msg_)
-                if isinstance(msg, dict):
-                    if "event" in msg:
-                        if msg["event"] == "subscribe":
-                            # logging.warning(f"Received non-error msg, probably confirmation:\n{msg}")
-                            pass
-                        else:
-                            raise ValueError("Something wrong with our subscribe msg")
-                    elif ("arg" in msg) and ("data" in msg):
-                        data = {
-                            'exchange': 'okx',
-                            'symbol': msg['arg']['instId'],
-                            'timestamp': int(msg['data'][0][0]),
-                            'open_': msg['data'][0][1],
-                            'high_': msg['data'][0][2],
-                            'low_': msg['data'][0][3],
-                            'close_': msg['data'][0][4],
-                            'volume_': msg['data'][0][5],
-                        }
-                        data_list.append(data)
+                if "event" in msg:
+                    if msg["event"] == "subscribe":
+                        pass
+                    else:
+                        raise ValueError("Something wrong with our subscribe msg")
                 else:
-                    # Send the remaining data_list to kafka?
-                    raise ValueError(f"Something wrong with received msg:\n{msg}")
+                    data = {
+                        'exchange': 'okx',
+                        'symbol': msg['arg']['instId'],
+                        'timestamp': int(msg['data'][0][0]),
+                        'open_': msg['data'][0][1],
+                        'high_': msg['data'][0][2],
+                        'low_': msg['data'][0][3],
+                        'close_': msg['data'][0][4],
+                        'volume_': msg['data'][0][5],
+                    }
+                    data_list.append(data)
                 if len(data_list) >= KAFKA_BATCHSIZE:
                     logging.info(f"Connection {con_id}: Sending data list to kafka")
                     send_to_kafka(
@@ -125,14 +124,10 @@ def run_subscribe(symbols: List[str], con_id: int):
     asyncio.run(_subscribe(symbols=symbols, con_id=con_id))
 
 
-def run_subscribe_threads(symbols: List[str], batchsize: int):
-    """Run subscribe in threads
-
-    Args:
-        symbols (List[str]): List of symbols
-        batchsize (int): Number of symbols to subscribe per connection
-
-    """
+if __name__ == "__main__":
+    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
+    symbols = get_symbols(limit=None)
+    batchsize = MAX_SYMBOLS_PER_CONNECTION
     max_workers = math.ceil(len(symbols) / batchsize)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
@@ -146,19 +141,5 @@ def run_subscribe_threads(symbols: List[str], batchsize: int):
             )
             logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS:.2f}s")  # Delay submitting futures
             time.sleep(SLEEP_BETWEEN_CONNECTIONS)
-
-
-if __name__ == "__main__":
-    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
-    symbols = get_symbols(limit=None)
-    batchsize = MAX_SYMBOLS_PER_CONNECTION
-    max_workers = math.ceil(len(symbols) / batchsize)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for i in range(0, len(symbols), batchsize):
-            executor.submit(
-                run_subscribe,
-                symbols=symbols[i:i + batchsize],
-                con_id=int(i / batchsize)
-            )
-            logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS:.2f}s")  # Delay submitting futures
-            time.sleep(SLEEP_BETWEEN_CONNECTIONS)
+        for future in futures:
+            future.result()

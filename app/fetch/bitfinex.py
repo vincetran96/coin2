@@ -33,6 +33,7 @@ MAX_CHANNELS_PER_CONNECTION = 25
 
 def get_symbols(limit: int = 1000) -> List[str]:
     """Get all symbols
+    Source: https://docs.bitfinex.com/reference/rest-public-conf#listing-requests
 
     Args:
         limit (int): Number of symbols to return
@@ -48,6 +49,10 @@ def get_symbols(limit: int = 1000) -> List[str]:
 
 async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
+
+    For each message received,
+      - Check for the confirmation of whether our subscribe message is successful
+      - Else, process the data
 
     Args:
         symbols (List[str]): List of symbols
@@ -74,28 +79,23 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
             data_list = []
             async for msg_ in con:
                 msg = json.loads(msg_)
-                if isinstance(msg, dict):
-                    if "event" in msg:
-                        if msg["event"] == "subscribed":
-                            channel_symbol[msg["chanId"]] = msg["key"]
-                        elif msg["event"] == "error":
-                            raise ValueError("Something wrong with our subscribe msg")
-                elif isinstance(msg, list):
-                    if len(msg) == 2 and len(msg[1]) == 6:
-                        data = {
-                            'exchange': 'bitfinex',
-                            'symbol': channel_symbol[msg[0]],
-                            'timestamp': int(msg[1][0]),
-                            'open_': msg[1][1],
-                            'high_': msg[1][3],
-                            'low_': msg[1][4],
-                            'close_': msg[1][2],
-                            'volume_': msg[1][5],
-                        }
-                        data_list.append(data)
+                if "event" in msg:
+                    if msg["event"] == "subscribed":
+                        channel_symbol[msg["chanId"]] = msg["key"]
+                    else:
+                        raise ValueError("Something wrong with our subscribe msg")
                 else:
-                    # Send the remaining data_list to kafka?
-                    raise ValueError(f"Something wrong with received msg:\n{msg}")
+                    data = {
+                        'exchange': 'bitfinex',
+                        'symbol': channel_symbol[msg[0]],
+                        'timestamp': int(msg[1][0]),
+                        'open_': msg[1][1],
+                        'high_': msg[1][3],
+                        'low_': msg[1][4],
+                        'close_': msg[1][2],
+                        'volume_': msg[1][5],
+                    }
+                    data_list.append(data)
                 if len(data_list) >= KAFKA_BATCHSIZE:
                     logging.info(f"Connection {con_id}: Sending data list to kafka")
                     send_to_kafka(
@@ -125,11 +125,16 @@ if __name__ == "__main__":
     batchsize = MAX_CHANNELS_PER_CONNECTION
     max_workers = math.ceil(len(symbols) / batchsize)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
         for i in range(0, len(symbols), batchsize):
-            executor.submit(
-                run_subscribe,
-                symbols=symbols[i:i + batchsize],
-                con_id=int(i / batchsize)
+            futures.append(
+                executor.submit(
+                    run_subscribe,
+                    symbols=symbols[i:i + batchsize],
+                    con_id=int(i / batchsize)
+                )
             )
             logging.info(f"Sleeping for {SLEEP_BETWEEN_CONNECTIONS:.2f}s")  # Delay submitting futures
             time.sleep(SLEEP_BETWEEN_CONNECTIONS)
+        for future in futures:
+            future.result()

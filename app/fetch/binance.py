@@ -29,6 +29,7 @@ MAX_SYMBOLS_PER_CONNECTION = 100  # Manually adjusted
 
 def get_symbols(limit: int = 1000) -> List[str]:
     """Get all symbols
+    Source: https://binance-docs.github.io/apidocs/spot/en/#exchange-information
 
     Args:
         limit (int): Number of symbols to return
@@ -44,6 +45,10 @@ def get_symbols(limit: int = 1000) -> List[str]:
 
 async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
+
+    For each message received,
+      - Check for the confirmation of whether our subscribe message is successful
+      - Else, process the data
 
     Args:
         symbols (List[str]): List of symbols
@@ -70,30 +75,25 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
             data_list = []
             async for msg_ in con:
                 msg = json.loads(msg_)
-                if isinstance(msg, dict):
-                    if (
-                        ("result" in msg and msg["result"])
-                        or ("error" in msg)
-                    ):
-                        raise ValueError("Something wrong with our subscribe msg")
-                    elif "s" not in msg:
-                        # logging.warning(f"Received non-error msg, probably confirmation:\n{msg}")
-                        pass
-                    else:
-                        data = {
-                            'exchange': 'binance',
-                            'symbol': msg['s'],
-                            'timestamp': int(msg['k']['t']),
-                            'open_': msg['k']['o'],
-                            'high_': msg['k']['h'],
-                            'low_': msg['k']['l'],
-                            'close_': msg['k']['c'],
-                            'volume_': msg['k']['v'],
-                        }
-                        data_list.append(data)
+                if (
+                    ("result" in msg and msg["result"])
+                    or ("error" in msg)
+                ):
+                    raise ValueError("Something wrong with our subscribe msg")
+                elif "s" not in msg:
+                    pass
                 else:
-                    # Send the remaining data_list to kafka?
-                    raise ValueError(f"Something wrong with received msg:\n{msg}")
+                    data = {
+                        'exchange': 'binance',
+                        'symbol': msg['s'],
+                        'timestamp': int(msg['k']['t']),
+                        'open_': msg['k']['o'],
+                        'high_': msg['k']['h'],
+                        'low_': msg['k']['l'],
+                        'close_': msg['k']['c'],
+                        'volume_': msg['k']['v'],
+                    }
+                    data_list.append(data)
                 if len(data_list) >= KAFKA_BATCHSIZE:
                     logging.info(f"Connection {con_id}: Sending data list to kafka")
                     send_to_kafka(
