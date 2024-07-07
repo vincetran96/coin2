@@ -33,6 +33,7 @@ MAX_SYMBOLS_PER_CONNECTION = 200  # Manually adjusted
 
 def get_symbols(limit: int = 1000, inst_type: str = "SPOT") -> List[str]:
     """Get all symbols
+    Source: https://www.okx.com/docs-v5/en/#public-data-rest-api-get-instruments
 
     Args:
         limit (int): Number of symbols to return
@@ -59,56 +60,55 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     backoff_delay = BACKOFF_TIME
     kafka_producer = create_producer()
 
-    while True:
+    async for con in websockets.connect(uri=WS_URI, ping_timeout=60):
         try:
-            async with websockets.connect(uri=WS_URI, ping_timeout=60) as con:
-                await con.send(
-                    message=json.dumps({
-                        "op": "subscribe",
-                        "args": [
-                            {
-                                "channel": "candle1m",
-                                "instId": symbol
-                            }
-                            for symbol in symbols
-                        ]
-                    })
-                )
-                logging.info(f"Connection {con_id}: Successful, num symbols: {len(symbols)}")
+            await con.send(
+                message=json.dumps({
+                    "op": "subscribe",
+                    "args": [
+                        {
+                            "channel": "candle1m",
+                            "instId": symbol
+                        }
+                        for symbol in symbols
+                    ]
+                })
+            )
+            logging.info(f"Connection {con_id}: Successful, num symbols: {len(symbols)}")
 
-                backoff_delay = BACKOFF_TIME
-                data_list = []
-                async for msg_ in con:
-                    msg = json.loads(msg_)
-                    if isinstance(msg, dict):
-                        if "event" in msg:
-                            if msg["event"] == "subscribe":
-                                # logging.warning(f"Received non-error msg, probably confirmation:\n{msg}")
-                                pass
-                            else:
-                                raise ValueError("Something wrong with our subscribe msg")
-                        elif ("arg" in msg) and ("data" in msg):
-                            data = {
-                                'exchange': 'okx',
-                                'symbol': msg['arg']['instId'],
-                                'timestamp': int(msg['data'][0][0]),
-                                'open_': msg['data'][0][1],
-                                'high_': msg['data'][0][2],
-                                'low_': msg['data'][0][3],
-                                'close_': msg['data'][0][4],
-                                'volume_': msg['data'][0][5],
-                            }
-                            data_list.append(data)
-                    else:
-                        # Send the remaining data_list to kafka?
-                        raise ValueError(f"Something wrong with received msg:\n{msg}")
-                    if len(data_list) >= KAFKA_BATCHSIZE:
-                        logging.info(f"Connection {con_id}: Sending data list to kafka")
-                        send_to_kafka(
-                            producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
-                        )
-                        data_list = []
-                    await asyncio.sleep(ASYNCIO_SLEEP)
+            backoff_delay = BACKOFF_TIME
+            data_list = []
+            async for msg_ in con:
+                msg = json.loads(msg_)
+                if isinstance(msg, dict):
+                    if "event" in msg:
+                        if msg["event"] == "subscribe":
+                            # logging.warning(f"Received non-error msg, probably confirmation:\n{msg}")
+                            pass
+                        else:
+                            raise ValueError("Something wrong with our subscribe msg")
+                    elif ("arg" in msg) and ("data" in msg):
+                        data = {
+                            'exchange': 'okx',
+                            'symbol': msg['arg']['instId'],
+                            'timestamp': int(msg['data'][0][0]),
+                            'open_': msg['data'][0][1],
+                            'high_': msg['data'][0][2],
+                            'low_': msg['data'][0][3],
+                            'close_': msg['data'][0][4],
+                            'volume_': msg['data'][0][5],
+                        }
+                        data_list.append(data)
+                else:
+                    # Send the remaining data_list to kafka?
+                    raise ValueError(f"Something wrong with received msg:\n{msg}")
+                if len(data_list) >= KAFKA_BATCHSIZE:
+                    logging.info(f"Connection {con_id}: Sending data list to kafka")
+                    send_to_kafka(
+                        producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
+                    )
+                    data_list = []
+                await asyncio.sleep(ASYNCIO_SLEEP)
 
         except (ConnectionClosed, InvalidStatusCode) as exc:
             logging.error(f"Connection {con_id}: Raised exception: {exc} - reconnecting...")
