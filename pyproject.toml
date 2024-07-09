@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "coin-for-rich2"
+version = "0.0.0"
+description = ""
+authors = ["Vince"]
+readme = "README.md"
+package-mode = false
+packages = [
+    {include = "app"},
+    {include = "common"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+confluent-kafka = "2.4.0"
+requests = "2.32.3"
+websockets = "12.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
