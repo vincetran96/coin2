@@ -41,7 +41,7 @@ spec:
               name: env
           resources:
             limits:
-              memory: 128Mi
+              memory: 256Mi
               cpu: 0.5
         - name: coin2-fetch-bitfinex
           image: vincetran96/coin2:test
