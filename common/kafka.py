@@ -1,5 +1,6 @@
 """Kafka
 """
+# pylint: disable-all
 # noqa: E501
 import logging
 from contextlib import closing
@@ -23,14 +24,8 @@ def acked(err, msg):
 def create_producer() -> Producer:
     """Create a Kafka producer
     """
-    # return Producer(
-    #     {
-    #         "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER)
-    #     }
-    # )
-
     return Producer({
-        "bootstrap.servers": "100.71.94.50:9094"
+        "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER)
     })
 
 
@@ -43,7 +38,7 @@ def create_consumer(
     """
     return closing(
         Consumer({
-            "bootstrap.servers": "100.71.94.50:9094",
+            "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER),
             "group.id": group_id,
             "enable.auto.commit": auto_commit,
             "auto.offset.reset": auto_offset_reset
@@ -54,9 +49,9 @@ def create_consumer(
 def create_admin_client():
     """Create an admin client
     """
-    return AdminClient(
-        {"bootstrap.servers": "100.71.94.50:9094"}
-    )
+    return AdminClient({
+        "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER)
+    })
 
 
 def create_new_topics(topics: List[str], num_partitions: int, replication_factor: int) -> None:
