@@ -6,7 +6,7 @@ WORKDIR /opt/coin2
 COPY . /opt/coin2
 
 RUN apt-get update -y
-RUN apt-get install -y iputils-ping telnet nano pipx
+RUN apt-get install -y iputils-ping dnsutils telnet nano pipx
 
 ENV PATH="${PATH}:/root/.local/bin"
 RUN pipx install poetry
