@@ -2,7 +2,7 @@ services:
   coin2-kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: coin2-kafka-ui
-    restart: always
+    restart: unless-stopped
     ports:
       - "60094:8080"
     environment:
@@ -18,7 +18,7 @@ services:
     image: docker.io/bitnami/kafka:3.6.2
     container_name: coin2-kafka-0
     hostname: coin2-kafka-0
-    restart: always
+    restart: unless-stopped
     ports:
       - "9094:9094"
     environment:
@@ -42,7 +42,7 @@ services:
     image: docker.io/bitnami/kafka:3.6.2
     container_name: coin2-kafka-1
     hostname: coin2-kafka-1
-    restart: always
+    restart: unless-stopped
     ports:
       - "9095:9095"
     environment:
@@ -66,7 +66,7 @@ services:
     image: docker.io/bitnami/kafka:3.6.2
     container_name: coin2-kafka-2
     hostname: coin2-kafka-2
-    restart: always
+    restart: unless-stopped
     ports:
       - "9096:9096"
     environment:
@@ -90,7 +90,7 @@ services:
     image: redpandadata/kminion:v2.2.8
     container_name: coin2-kafka-minion
     hostname: coin2-kafka-minion
-    restart: always
+    restart: unless-stopped
     depends_on:
       - coin2-kafka-0
       - coin2-kafka-1
