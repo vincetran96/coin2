@@ -1,56 +1,15 @@
 # Prerequisites
-- Assuming that you're running on Tailscale & K3s
+- Assuming that we're running on Tailscale & K3s
 
 
-# Components
-## App Docker image
-```bash
-chmod +x build/build.sh
-./build/build.sh tag_name
-chmod +x build/local-k8s-repo.sh
-./build/local-k8s-repo.sh
-```
+# Architecture
+TODO: Add this.
+
+# Deployment steps
 ## Kafka
 ### Setup cluster
 ```bash
 docker compose -f build/kafka.docker-compose.yaml up --force-recreate
-```
-### Console commands
-```bash
-# List topics
-docker run -it --rm --network=host bitnami/kafka:3.6.2 \
-    kafka-topics.sh \
-    --bootstrap-server localhost:9094 \
-    --list
-
-# Delete a topic
-docker run -it --rm --network=host bitnami/kafka:3.6.2 \
-    kafka-topics.sh \
-    --bootstrap-server localhost:9094 \
-    --delete \
-    --topic TOPIC
-
-# Consume from a topic
-docker run -it --rm --network=host bitnami/kafka:3.6.2 \
-    kafka-console-consumer.sh \
-    --bootstrap-server localhost:9094 \
-    --topic TOPIC \
-    --from-beginning \
-    --property "parse.key=true"
-
-# Describe a topic
-docker run -it --rm --network=host bitnami/kafka:3.6.2 \
-    kafka-topics.sh \
-    --bootstrap-server localhost:9094 \
-    --describe \
-    --topic TOPIC
-
-# Check access rights
-docker run -it --rm --network=host bitnami/kafka:3.6.2 \
-    kafka-acls.sh \
-    --bootstrap-server localhost:9094 \
-    --list \
-    --topic TOPIC
 ```
 ### Prometheus
 #### UFW config
@@ -58,7 +17,7 @@ docker run -it --rm --network=host bitnami/kafka:3.6.2 \
     ```
     [Kafka]
     title=Kafka ports
-    description=For access into Kafka Docker
+    description=For access into Kafka Docker cluster
     ports=9200:9204/tcp
     ```
 - Run `sudo ufw allow Kafka`
@@ -80,13 +39,20 @@ docker run -it --rm --network=host bitnami/kafka:3.6.2 \
 #### After things are up
 - Check the following endpoint for output of a service: `http://TAILSCALE_IP:EXPORT_PORT/metrics`
 - Check the following endpoint for Prometheus datasources' status: `http://TAILSCALE_IP:9090/targets`
-## App k8s deployment
+## Build Coin app Docker image
+```bash
+chmod +x build/build.sh
+./build/build.sh tag_name
+chmod +x build/local-k8s-repo.sh
+./build/local-k8s-repo.sh
+```
+## Deploy Coin app k8s cluster
 ### Configs
 ```bash
 kubectl create ns coin2
 kubectl create -f k8s/coin2-configmap.yaml
 ```
-### Start app
+### Start the app
 ```bash
 kubectl apply \
     -f k8s/coin2-heartbeat.yaml \
@@ -96,7 +62,7 @@ kubectl apply \
 ```
 
 
-# Debugging
+# Quick scripts
 ```bash
 # Start k8s things
 ./scripts/k8s-start.sh
@@ -104,3 +70,7 @@ kubectl apply \
 # Stop k8s things
 ./scripts/k8s-shutdown.sh
 ```
+
+
+# Debug
+Refer to [DEBUGGING](docs/DEBUGGING.md).
