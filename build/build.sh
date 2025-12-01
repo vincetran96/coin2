@@ -1,4 +1,4 @@
 #! /usr/bin/env bash
-IMAGE_TAG=vincetran96/coin2:test
+IMAGE_TAG=$1
 
 docker build --no-cache -t "${IMAGE_TAG}" -f ./build/coin2.Dockerfile .
