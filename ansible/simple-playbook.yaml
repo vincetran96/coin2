@@ -1,0 +1,26 @@
+---
+- name: Intro to Ansible Playbooks
+  hosts: all
+  vars:
+    state: latest
+    user: bob
+  tasks:
+  - name: Copy file with owner and permissions
+    ansible.builtin.copy:
+      src: ./inventory.ini
+      dest: /tmp/inventory_backup
+      mode: '0644'
+  - name: Add the user 'bob'
+    ansible.builtin.user:
+      name: bob
+    become: yes
+    become_method: sudo
+  - name: Upgrade all apt packages
+    apt:
+      force_apt_get: yes
+      upgrade: dist
+    become: yes
+  - name: Install the {{ state }} of package "nginx"
+    apt:
+      name: "nginx"
+      state: "{{ state }}"

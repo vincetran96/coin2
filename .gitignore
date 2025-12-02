@@ -181,3 +181,5 @@ cython_debug/
 #.idea/
 
 .DS_Store
+ansible/.vagrant
+ansible/inventory.ini
