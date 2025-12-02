@@ -11,5 +11,7 @@ from common.utils.connections import is_socket_open
 if __name__ == "__main__":
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
     while True:
-        is_socket_open(Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER))
+        kafka_bootstrap_server = Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER)
+        logging.info(f"Checking Kafka bootstrap server at {kafka_bootstrap_server}")
+        is_socket_open(kafka_bootstrap_server)
         sleep(10)
