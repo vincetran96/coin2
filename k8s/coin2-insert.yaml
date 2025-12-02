@@ -7,7 +7,7 @@ metadata:
   labels:
     app: coin2
   namespace: coin2
-  name: coin2-insert
+  name: coin2-inserter
 spec:
   replicas: 4
   selector:
@@ -25,8 +25,8 @@ spec:
         - name: coin2-insert
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
-          command: ["/bin/bash"]
-          args: ["./scripts/py-module.sh", "app.insert.insert"]
+          command: ["uv"]
+          args: ["run", "-m", "app.insert.insert"]
           envFrom:
           - configMapRef:
               name: env
