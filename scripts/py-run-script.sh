@@ -3,4 +3,4 @@ set -eo pipefail
 
 MODULE=$1
 
-python -m $MODULE
+uv run -m $MODULE
