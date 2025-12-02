@@ -1,26 +1,26 @@
 services:
   prometheus:
     image: prom/prometheus:v2.47.2
-    restart: always
+    restart: unless-stopped
     ports:
       - "19090:9090"
     volumes:
-      - ./prometheus/prometheus:/etc/prometheus
+      - ./monitoring/prometheus:/etc/prometheus
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
-    restart: always
+    restart: unless-stopped
     ports:
       - "19093:9093"
 
   grafana:
     image: grafana/grafana:10.4.5
-    restart: always
+    restart: unless-stopped
     ports:
       - "63000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./prometheus/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
 
 volumes:
   grafana-data:

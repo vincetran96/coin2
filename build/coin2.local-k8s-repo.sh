@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-IMAGE=docker.io/vincetran96/coin2:test
+IMAGE=docker.io/$1
 OUTPUT=coin2.tar
 docker save $IMAGE -o $OUTPUT
 # sudo k3s crictl rmi $IMAGE

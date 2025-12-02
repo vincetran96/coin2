@@ -11,7 +11,10 @@ TODO: Add this.
 ```bash
 docker compose -f build/kafka.docker-compose.yaml up --force-recreate -d
 ```
-### Prometheus
+### Monitoring with Prometheus and Grafana
+#### Prometheus and Grafana resourcess
+- https://www.confluent.io/blog/monitor-kafka-clusters-with-prometheus-grafana-and-confluent/
+- https://medium.com/@oredata-engineering/setting-up-prometheus-grafana-for-kafka-on-docker-8a692a45966c
 #### UFW config
 - Create a file named `/etc/ufw/applications.d/kafka`:
     ```
@@ -21,12 +24,7 @@ docker compose -f build/kafka.docker-compose.yaml up --force-recreate -d
     ports=9200:9204/tcp
     ```
 - Run `sudo ufw allow Kafka`
-#### Prometheus and Grafana
-- https://www.confluent.io/blog/monitor-kafka-clusters-with-prometheus-grafana-and-confluent/
-- https://medium.com/@oredata-engineering/setting-up-prometheus-grafana-for-kafka-on-docker-8a692a45966c
 #### Service data export config examples
-**Kafka**
-
 **Option 1. KMinion**
 - https://github.com/redpanda-data/kminion/tree/master
 - The export port can be 9200, for example.
@@ -39,19 +37,22 @@ docker compose -f build/kafka.docker-compose.yaml up --force-recreate -d
   - https://repo.maven.apache.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
 #### Setup cluster
 ```bash
-docker compose -f build/prometheus.docker-compose.yaml up --force-recreate -d
+docker compose -f build/monitoring.docker-compose.yaml up --force-recreate -d
 ```
 #### After things are up
 - Check the following endpoint for output of a service (e.g., KMinion): `http://TAILSCALE_IP:9200/metrics`
-- Check the following endpoint for Prometheus datasources' status: `http://TAILSCALE_IP:9090/targets`
+- Check the following endpoint for Prometheus datasources' status: `http://TAILSCALE_IP:19090/targets`
+  - If the Prometheus data source for Grafana doesn't exist, manually add this: endpoint: `http://prometheus:9090`
+- Import dashboards into Grafana from [here](./assets/monitoring/grafana/dashboards/).
 ## Build Coin app Docker image
 ```bash
-chmod +x build/build.sh
-./build/build.sh vincetran96/coin2:test
-chmod +x build/local-k8s-repo.sh
-./build/local-k8s-repo.sh
+chmod +x build/coin2.build.sh
+./build/coin2.build.sh vincetran96/coin2:test
+chmod +x build/coin2.local-k8s-repo.sh
+./build/coin2.local-k8s-repo.sh vincetran96/coin2:test
 ```
-## Deploy Coin app k8s cluster ### Configs
+## Deploy Coin app k8s cluster
+### K8s configs
 ```bash
 kubectl create ns coin2
 kubectl create -f k8s/coin2-configmap.yaml
