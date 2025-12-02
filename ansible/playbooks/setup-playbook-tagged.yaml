@@ -1,0 +1,552 @@
+---
+# =============================================================================
+# Ansible Playbook: Complete Machine Setup (Enhanced Version with Tags)
+# =============================================================================
+# This is an enhanced version with tags, handlers, and better error handling
+#
+# Usage Examples:
+#   # Run everything
+#   ansible-playbook -i inventory.ini setup-playbook-tagged.yml
+#
+#   # Only install Tailscale
+#   ansible-playbook -i inventory.ini setup-playbook-tagged.yml --tags tailscale
+#
+#   # Install Docker and K3s only
+#   ansible-playbook -i inventory.ini setup-playbook-tagged.yml --tags docker,k3s
+#
+#   # Skip uv-python installation
+#   ansible-playbook -i inventory.ini setup-playbook-tagged.yml --skip-tags uv
+#
+# Available Tags: tailscale, docker, k3s, uv, verify
+# =============================================================================
+
+- name: Complete Machine Setup (Enhanced)
+  hosts: vagrant_host2
+  become: true
+  gather_facts: true
+  
+  vars:
+    # K3s Configuration
+    k3s_token: "12345"  # CHANGE THIS! Use: openssl rand -hex 32
+    tailscale_interface: "tailscale0"
+    
+    # Directories
+    user_home: "/home/{{ ansible_facts['user_id'] }}"
+    kube_config_dir: "{{ user_home }}/.kube"
+    
+    # Feature flags (can override at runtime)
+    install_tailscale: true
+    install_docker: true
+    install_k3s: true
+    install_uv: true
+    
+  handlers:
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+    
+    - name: restart k3s
+      systemd:
+        name: k3s
+        state: restarted
+      ignore_errors: yes
+  
+  pre_tasks:
+    - name: "PRE | Display playbook information"
+      debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          Starting Machine Setup Playbook
+          ═══════════════════════════════════════════════════════════════
+          Target Host: {{ ansible_facts["hostname"] | default(inventory_hostname) }}
+          User: {{ ansible_facts["user_id"] }}
+          OS: {{ ansible_facts["distribution"] }} {{ ansible_facts["distribution_version"] }}
+          Architecture: {{ ansible_facts["architecture"] }}
+          ═══════════════════════════════════════════════════════════════
+      tags: always
+    
+    # - name: "PRE | Ensure system is Debian-based"
+    #   assert:
+    #     that:
+    #       - ansible_os_family == "Debian"
+    #     fail_msg: "This playbook only supports Debian-based systems (Debian/Ubuntu)"
+    #     success_msg: "✓ Debian-based system detected"
+    #   tags: always
+    
+    - name: "PRE | Update apt cache"
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      tags: always
+  
+  tasks:
+    # =========================================================================
+    # TAILSCALE INSTALLATION
+    # =========================================================================
+    
+    - name: "TAILSCALE | Check if already installed"
+      command: which tailscale
+      register: tailscale_check
+      ignore_errors: yes
+      changed_when: false
+      check_mode: no
+      tags: [tailscale, verify]
+      when: install_tailscale | bool
+    
+    - name: "TAILSCALE | Install prerequisites"
+      apt:
+        name:
+          - curl
+          - ca-certificates
+        state: present
+      tags: tailscale
+      when: 
+        - install_tailscale | bool
+        - tailscale_check.rc != 0
+    
+    - name: "TAILSCALE | Download and install"
+      shell: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+      args:
+        executable: /bin/bash
+      tags: tailscale
+      when: 
+        - install_tailscale | bool
+        - tailscale_check.rc != 0
+      register: tailscale_install
+    
+    - name: "TAILSCALE | Check authentication status"
+      command: tailscale status
+      register: tailscale_status
+      ignore_errors: yes
+      changed_when: false
+      check_mode: no
+      tags: [tailscale, verify]
+      when: install_tailscale | bool
+    
+    - name: "TAILSCALE | Attempt to start"
+      command: tailscale up --accept-routes
+      when: 
+        - install_tailscale | bool
+        - tailscale_status.rc != 0
+      register: tailscale_up
+      ignore_errors: yes
+      tags: tailscale
+    
+    - name: "TAILSCALE | Get IP address"
+      shell: tailscale ip -4 | head -n 1
+      register: tailscale_ip_result
+      changed_when: false
+      ignore_errors: yes
+      check_mode: no
+      tags: [tailscale, verify]
+      when: install_tailscale | bool
+    
+    - name: "TAILSCALE | Set IP as fact"
+      set_fact:
+        tailscale_ip: "{{ tailscale_ip_result.stdout | default('') }}"
+      tags: [tailscale, k3s]
+      when: 
+        - install_tailscale | bool
+        - tailscale_ip_result.rc == 0
+    
+    - name: "TAILSCALE | Display status"
+      debug:
+        msg: |
+          ✓ Tailscale Status: {{ 'Installed & Authenticated' if tailscale_ip is defined and tailscale_ip != '' else 'Installed (Authentication required)' }}
+          IP: {{ tailscale_ip | default('Not available - run: sudo tailscale up') }}
+      tags: [tailscale, verify]
+      when: install_tailscale | bool
+    
+    # =========================================================================
+    # DOCKER INSTALLATION
+    # =========================================================================
+    
+    - name: "DOCKER | Remove conflicting packages"
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+          - docker-doc
+          - podman-docker
+        state: absent
+      tags: docker
+      ignore_errors: yes
+      when: install_docker | bool
+    
+    - name: "DOCKER | Install prerequisites"
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+      tags: docker
+      when: install_docker | bool
+    
+    - name: "DOCKER | Create keyrings directory"
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+      tags: docker
+      when: install_docker | bool
+    
+    - name: "DOCKER | Add GPG key"
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+      tags: docker
+      when: install_docker | bool
+    
+    - name: "DOCKER | Detect OS codename"
+      shell: . /etc/os-release && echo "$VERSION_CODENAME"
+      register: os_codename
+      changed_when: false
+      check_mode: no
+      tags: docker
+      when: install_docker | bool
+    
+    - name: "DOCKER | Add repository"
+      copy:
+        dest: /etc/apt/sources.list.d/docker.sources
+        content: |
+          Types: deb
+          URIs: https://download.docker.com/linux/debian
+          Suites: {{ os_codename.stdout }}
+          Components: stable
+          Signed-By: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+      register: docker_repo
+      tags: docker
+      when: install_docker | bool
+    
+    - name: "DOCKER | Update apt cache"
+      apt:
+        update_cache: yes
+      when: 
+        - install_docker | bool
+        - docker_repo.changed
+      tags: docker
+    
+    - name: "DOCKER | Install Docker packages"
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+      notify: restart docker
+      tags: docker
+      when: install_docker | bool
+    
+    - name: "DOCKER | Start and enable service"
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      tags: docker
+      when: install_docker | bool
+    
+    - name: "DOCKER | Add user to docker group"
+      user:
+        name: "{{ ansible_facts['user_id'] }}"
+        groups: docker
+        append: yes
+      when: 
+        - install_docker | bool
+        - ansible_facts['user_id'] != 'root'
+      tags: docker
+    
+    - name: "DOCKER | Verify installation"
+      command: docker --version
+      register: docker_version
+      changed_when: false
+      tags: [docker, verify]
+      when: install_docker | bool
+    
+    - name: "DOCKER | Display version"
+      debug:
+        msg: "✓ Docker installed: {{ docker_version.stdout }}"
+      tags: [docker, verify]
+      when: 
+        - install_docker | bool
+        - docker_version.stdout is defined
+    
+    # =========================================================================
+    # K3S INSTALLATION
+    # =========================================================================
+    
+    - name: "K3S | Check if already installed"
+      command: which k3s
+      register: k3s_check
+      ignore_errors: yes
+      changed_when: false
+      check_mode: no
+      tags: [k3s, verify]
+      when: install_k3s | bool
+    
+    - name: "K3S | Ensure UFW directory exists"
+      file:
+        path: /etc/ufw/applications.d
+        state: directory
+        mode: '0755'
+      tags: k3s
+      when: install_k3s | bool
+    
+    - name: "K3S | Create UFW application profile"
+      copy:
+        dest: /etc/ufw/applications.d/k3s
+        content: |
+          [K3s]
+          title=K3s ports
+          description=Required by K3s: https://docs.k3s.io/installation/requirements#networking
+          ports=2379:2380/tcp|6443/tcp|8472/udp|10250/tcp|51820/udp|51821/udp|5001/tcp
+        mode: '0644'
+      tags: k3s
+      when: install_k3s | bool
+    
+    - name: "K3S | Verify Tailscale IP available"
+      assert:
+        that:
+          - tailscale_ip is defined
+          - tailscale_ip != ''
+        fail_msg: |
+          Tailscale IP not available. Please authenticate Tailscale first:
+          Run: sudo tailscale up
+        success_msg: "✓ Tailscale IP available: {{ tailscale_ip }}"
+      tags: k3s
+      when: 
+        - install_k3s | bool
+        - k3s_check.rc != 0
+        - install_tailscale | bool
+      ignore_errors: yes
+    
+    - name: "K3S | Create .kube directory"
+      file:
+        path: "{{ kube_config_dir }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+      tags: k3s
+      when: 
+        - install_k3s | bool
+        - ansible_user_id != 'root'
+    
+    - name: "K3S | Install K3s server"
+      shell: |
+        export TAILSCALE_IP="{{ tailscale_ip | default('') }}"
+        curl -sfL https://get.k3s.io | \
+        INSTALL_K3S_EXEC="server \
+          --disable traefik \
+          --disable servicelb \
+          --write-kubeconfig {{ kube_config_dir }}/config \
+          --write-kubeconfig-mode 644 \
+          --flannel-iface {{ tailscale_interface }} \
+          --node-ip ${TAILSCALE_IP} \
+          --node-external-ip ${TAILSCALE_IP}" \
+        K3S_TOKEN="{{ k3s_token }}" \
+        sh -
+      args:
+        executable: /bin/bash
+      tags: k3s
+      when: 
+        - install_k3s | bool
+        - k3s_check.rc != 0
+        - tailscale_ip is defined
+        - tailscale_ip != ''
+      register: k3s_install
+      notify: restart k3s
+    
+    - name: "K3S | Fix kubeconfig ownership"
+      file:
+        path: "{{ kube_config_dir }}/config"
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+        mode: '0644'
+      tags: k3s
+      when: 
+        - install_k3s | bool
+        - ansible_user_id != 'root'
+        - k3s_install.changed
+      ignore_errors: yes
+    
+    - name: "K3S | Wait for cluster to be ready"
+      command: k3s kubectl get nodes
+      register: k3s_nodes
+      retries: 15
+      delay: 5
+      until: k3s_nodes.rc == 0
+      tags: [k3s, verify]
+      when: 
+        - install_k3s | bool
+        - k3s_install.changed
+      ignore_errors: yes
+    
+    - name: "K3S | Display cluster status"
+      debug:
+        msg: |
+          ✓ K3s installed successfully
+          Kubeconfig: {{ kube_config_dir }}/config
+          Cluster nodes: {{ k3s_nodes.stdout_lines | default(['Not available yet']) }}
+      tags: [k3s, verify]
+      when: 
+        - install_k3s | bool
+        - k3s_install.changed
+    
+    # =========================================================================
+    # UV-PYTHON INSTALLATION
+    # =========================================================================
+    
+    - name: "UV | Check if already installed"
+      shell: |
+        su - {{ ansible_user_id }} -c "command -v uv"
+      register: uv_check
+      ignore_errors: yes
+      changed_when: false
+      check_mode: no
+      tags: [uv, verify]
+      when: install_uv | bool
+    
+    - name: "UV | Install prerequisites"
+      apt:
+        name:
+          - wget
+          - ca-certificates
+        state: present
+      tags: uv
+      when: 
+        - install_uv | bool
+        - uv_check.rc != 0
+    
+    - name: "UV | Download and install"
+      shell: |
+        su - {{ ansible_user_id }} -c "wget -qO- https://astral.sh/uv/install.sh | sh"
+      args:
+        executable: /bin/bash
+      tags: uv
+      when: 
+        - install_uv | bool
+        - uv_check.rc != 0
+      register: uv_install
+    
+    - name: "UV | Add to PATH in .bashrc"
+      lineinfile:
+        path: "{{ user_home }}/.bashrc"
+        line: 'export PATH="$HOME/.cargo/bin:/$HOME/.local/bin:$PATH"'
+        create: yes
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+      tags: uv
+      when: 
+        - install_uv | bool
+        - ansible_user_id != 'root'
+        - uv_install.changed
+    
+    - name: "UV | Add to PATH in .profile"
+      lineinfile:
+        path: "{{ user_home }}/.profile"
+        line: 'export PATH="$HOME/.cargo/bin:/$HOME/.local/bin:$PATH"'
+        create: yes
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+      tags: uv
+      when: 
+        - install_uv | bool
+        - ansible_user_id != 'root'
+        - uv_install.changed
+    
+    - name: "UV | Verify installation"
+      shell: |
+        su - {{ ansible_user_id }} -c "uv --version"
+      register: uv_version
+      ignore_errors: yes
+      changed_when: false
+      tags: [uv, verify]
+      when: install_uv | bool
+    
+    - name: "UV | Display version"
+      debug:
+        msg: "✓ uv installed: {{ uv_version.stdout | default('Installation verification pending - reload shell') }}"
+      tags: [uv, verify]
+      when: install_uv | bool
+    
+  post_tasks:
+    # =========================================================================
+    # VERIFICATION & SUMMARY
+    # =========================================================================
+    
+    - name: "VERIFY | Test all installations"
+      block:
+        - name: "VERIFY | Check Tailscale"
+          command: tailscale version
+          register: verify_tailscale
+          ignore_errors: yes
+          changed_when: false
+          when: install_tailscale | bool
+        
+        - name: "VERIFY | Check Docker"
+          command: docker --version
+          register: verify_docker
+          ignore_errors: yes
+          changed_when: false
+          when: install_docker | bool
+        
+        - name: "VERIFY | Check K3s"
+          command: k3s --version
+          register: verify_k3s
+          ignore_errors: yes
+          changed_when: false
+          when: install_k3s | bool
+        
+        - name: "VERIFY | Check uv"
+          shell: su - {{ ansible_user_id }} -c "$HOME/.cargo/bin/uv --version"
+          register: verify_uv
+          ignore_errors: yes
+          changed_when: false
+          when: install_uv | bool
+      tags: [verify, always]
+    
+    - name: "SUMMARY | Display final summary"
+      debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          Installation Complete!
+          ═══════════════════════════════════════════════════════════════
+          
+          {% if install_tailscale %}
+          Tailscale:    {{ 'OK' if verify_tailscale.rc == 0 else 'Needs Authentication' }}
+             └─ IP:        {{ tailscale_ip | default('Run: sudo tailscale up') }}
+          {% endif %}
+          
+          {% if install_docker %}
+          Docker:       {{ 'OK' if verify_docker.rc == 0 else 'Check failed' }}
+             └─ Version:   {{ verify_docker.stdout | default('N/A') }}
+          {% endif %}
+          
+          {% if install_k3s %}
+          K3s:          {{ 'OK' if verify_k3s.rc == 0 else 'Check failed' }}
+             └─ Config:    {{ kube_config_dir }}/config
+          {% endif %}
+          
+          {% if install_uv %}
+          uv-python:    {{ 'OK' if verify_uv.rc == 0 else 'Check failed' }}
+             └─ Location:  $HOME/.cargo/bin/uv
+          {% endif %}
+          
+          ═══════════════════════════════════════════════════════════════
+          Next Steps:
+          ═══════════════════════════════════════════════════════════════
+          
+          1. Reload your shell: source ~/.bashrc
+          2. For Docker: newgrp docker (or log out/in)
+          3. For K3s: export KUBECONFIG={{ kube_config_dir }}/config
+          4. For Tailscale: sudo tailscale up (if not authenticated)
+          
+          ═══════════════════════════════════════════════════════════════
+      tags: always

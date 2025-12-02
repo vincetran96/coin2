@@ -1,0 +1,370 @@
+---
+# Ansible Playbook: Complete Machine Setup
+# This playbook sets up a complete development/production environment with:
+#   - Tailscale - VPN mesh network
+#   - Docker - Container runtime
+#   - K3s - Lightweight Kubernetes
+#   - uv-python - Python package installer
+
+- name: Complete Machine Setup
+  hosts: vagrant_host1
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # K3s Configuration
+    k3s_token: "12345"  # Change this to a secure token
+    tailscale_interface: "tailscale0"
+    
+    # Python uv installation (runs as regular user)
+    uv_install_user: "{{ ansible_user_id }}"
+    
+  tasks:
+    # =========================================================================
+    # TASK GROUP 1: TAILSCALE INSTALLATION
+    # =========================================================================
+    
+    - name: "TAILSCALE | Check if Tailscale is already installed"
+      command: which tailscale
+      register: tailscale_check
+      ignore_errors: yes
+      changed_when: false
+      check_mode: no
+    
+    - name: "TAILSCALE | Download and install Tailscale"
+      shell: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+      args:
+        executable: /bin/bash
+      when: tailscale_check.rc != 0
+      register: tailscale_install
+    
+    - name: "TAILSCALE | Display installation result"
+      debug:
+        msg: "Tailscale installation completed"
+      when: tailscale_install.changed
+    
+    - name: "TAILSCALE | Check if Tailscale is already authenticated"
+      command: tailscale status
+      register: tailscale_status
+      ignore_errors: yes
+      changed_when: false
+      check_mode: no
+    
+    - name: "TAILSCALE | Start Tailscale (requires manual authentication)"
+      command: tailscale up
+      when: tailscale_status.rc != 0
+      register: tailscale_up
+      ignore_errors: yes
+    
+    - name: "TAILSCALE | Display authentication message"
+      debug:
+        msg: |
+          IMPORTANT: Tailscale requires authentication!
+          If this is the first run, you need to authenticate via the URL shown above.
+          You can manually run: sudo tailscale up
+      when: tailscale_up is defined and tailscale_up.changed
+    
+    - name: "TAILSCALE | Get Tailscale IP address"
+      shell: |
+        tailscale ip -4 | head -n 1
+      register: tailscale_ip_result
+      changed_when: false
+      ignore_errors: yes
+      check_mode: no
+    
+    - name: "TAILSCALE | Set Tailscale IP as fact"
+      set_fact:
+        tailscale_ip: "{{ tailscale_ip_result.stdout | default('') }}"
+      when: tailscale_ip_result.rc == 0
+    
+    - name: "TAILSCALE | Display Tailscale IP"
+      debug:
+        msg: "Tailscale IP: {{ tailscale_ip | default('Not available yet - please authenticate first') }}"
+    
+    # =========================================================================
+    # TASK GROUP 2: DOCKER INSTALLATION
+    # =========================================================================
+    
+    - name: "DOCKER | Remove old Docker packages"
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+          - docker-doc
+          - podman-docker
+          - containerd
+          - runc
+        state: absent
+      ignore_errors: yes
+    
+    - name: "DOCKER | Update apt cache"
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+    
+    - name: "DOCKER | Install prerequisites"
+      apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+    
+    - name: "DOCKER | Create keyrings directory"
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+    
+    - name: "DOCKER | Download Docker GPG key"
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+    
+    - name: "DOCKER | Detect OS codename"
+      shell: . /etc/os-release && echo "$VERSION_CODENAME"
+      register: os_codename
+      changed_when: false
+      check_mode: no
+    
+    - name: "DOCKER | Add Docker repository"
+      copy:
+        dest: /etc/apt/sources.list.d/docker.sources
+        content: |
+          Types: deb
+          URIs: https://download.docker.com/linux/debian
+          Suites: {{ os_codename.stdout }}
+          Components: stable
+          Signed-By: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+      register: docker_repo
+    
+    - name: "DOCKER | Update apt cache after adding repository"
+      apt:
+        update_cache: yes
+      when: docker_repo.changed
+    
+    - name: "DOCKER | Install Docker packages"
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+    
+    - name: "DOCKER | Ensure Docker service is started and enabled"
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+    
+    - name: "DOCKER | Add current user to docker group"
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
+      when: ansible_user_id != 'root'
+    
+    - name: "DOCKER | Display Docker version"
+      command: docker --version
+      register: docker_version
+      changed_when: false
+    
+    - name: "DOCKER | Show Docker version"
+      debug:
+        msg: "{{ docker_version.stdout }}"
+    
+    # =========================================================================
+    # TASK GROUP 3: K3S INSTALLATION
+    # =========================================================================
+    
+    - name: "K3S | Check if K3s is already installed"
+      command: which k3s
+      register: k3s_check
+      ignore_errors: yes
+      changed_when: false
+      check_mode: no
+    
+    - name: "K3S | Ensure UFW applications directory exists"
+      file:
+        path: /etc/ufw/applications.d
+        state: directory
+        mode: '0755'
+    
+    - name: "K3S | Create UFW application profile for K3s"
+      copy:
+        dest: /etc/ufw/applications.d/k3s
+        content: |
+          [K3s]
+          title=K3s ports
+          description=Required by K3s: https://docs.k3s.io/installation/requirements#networking
+          ports=2379:2380/tcp|6443/tcp|8472/udp|10250/tcp|51820/udp|51821/udp|5001/tcp
+        mode: '0644'
+    
+    - name: "K3S | Check if Tailscale IP is available"
+      fail:
+        msg: |
+          Tailscale IP is not available. Please ensure Tailscale is authenticated.
+          Run: sudo tailscale up
+      when: tailscale_ip is not defined or tailscale_ip == ''
+      ignore_errors: yes
+    
+    - name: "K3S | Create .kube directory for user"
+      file:
+        path: "/home/{{ ansible_user_id }}/.kube"
+        state: directory
+        mode: '0755'
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+      when: ansible_user_id != 'root'
+    
+    - name: "K3S | Install K3s"
+      shell: |
+        export TAILSCALE_IP="{{ tailscale_ip | default('') }}"
+        curl -sfL https://get.k3s.io | \
+        INSTALL_K3S_EXEC="server \
+          --disable traefik \
+          --disable servicelb \
+          --write-kubeconfig /home/{{ ansible_user_id }}/.kube/config \
+          --write-kubeconfig-mode 644 \
+          --flannel-iface {{ tailscale_interface }} \
+          --node-ip ${TAILSCALE_IP} \
+          --node-external-ip ${TAILSCALE_IP}" \
+        K3S_TOKEN="{{ k3s_token }}" \
+        sh -
+      args:
+        executable: /bin/bash
+      when: 
+        - k3s_check.rc != 0
+        - tailscale_ip is defined
+        - tailscale_ip != ''
+      register: k3s_install
+    
+    - name: "K3S | Fix kubeconfig ownership"
+      file:
+        path: "/home/{{ ansible_user_id }}/.kube/config"
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+        mode: '0644'
+      when: 
+        - ansible_user_id != 'root'
+        - k3s_install.changed
+      ignore_errors: yes
+    
+    - name: "K3S | Wait for K3s to be ready"
+      command: k3s kubectl get nodes
+      register: k3s_nodes
+      retries: 10
+      delay: 5
+      until: k3s_nodes.rc == 0
+      when: k3s_install.changed
+      ignore_errors: yes
+    
+    - name: "K3S | Display K3s status"
+      debug:
+        msg: "K3s installation completed. Kubeconfig available at /home/{{ ansible_user_id }}/.kube/config"
+      when: k3s_install.changed
+    
+    # =========================================================================
+    # TASK GROUP 4: UV-PYTHON INSTALLATION
+    # =========================================================================
+    
+    - name: "UV-PYTHON | Check if uv is already installed"
+      shell: |
+        su - {{ ansible_user_id }} -c "command -v uv"
+      register: uv_check
+      ignore_errors: yes
+      changed_when: false
+      check_mode: no
+    
+    - name: "UV-PYTHON | Download and install uv"
+      shell: |
+        su - {{ ansible_user_id }} -c "wget -qO- https://astral.sh/uv/install.sh | sh"
+      args:
+        executable: /bin/bash
+      when: uv_check.rc != 0
+      register: uv_install
+    
+    - name: "UV-PYTHON | Add uv to PATH in .bashrc"
+      lineinfile:
+        path: "/home/{{ ansible_user_id }}/.bashrc"
+        line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+        create: yes
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+      when: 
+        - ansible_user_id != 'root'
+        - uv_install.changed
+    
+    - name: "UV-PYTHON | Add uv to PATH in .profile"
+      lineinfile:
+        path: "/home/{{ ansible_user_id }}/.profile"
+        line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+        create: yes
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+      when: 
+        - ansible_user_id != 'root'
+        - uv_install.changed
+    
+    - name: "UV-PYTHON | Verify uv installation"
+      shell: |
+        su - {{ ansible_user_id }} -c "$HOME/.cargo/bin/uv --version"
+      register: uv_version
+      ignore_errors: yes
+      changed_when: false
+    
+    - name: "UV-PYTHON | Display uv version"
+      debug:
+        msg: "{{ uv_version.stdout | default('uv installation verification failed') }}"
+      when: uv_version.rc == 0
+    
+    # =========================================================================
+    # FINAL SUMMARY
+    # =========================================================================
+    
+    - name: "SUMMARY | Gather installation status"
+      set_fact:
+        installation_summary:
+          tailscale: "{{ 'Installed' if tailscale_check.rc != 0 else 'Already installed' }}"
+          tailscale_ip: "{{ tailscale_ip | default('Not authenticated yet') }}"
+          docker: "{{ 'Installed' if docker_version.stdout is defined else 'Installation error' }}"
+          k3s: "{{ 'Installed' if k3s_install.changed else 'Already installed or skipped' }}"
+          uv_python: "{{ 'Installed' if uv_install.changed else 'Already installed' }}"
+    
+    - name: "SUMMARY | Display installation summary"
+      debug:
+        msg: |          
+          Tailscale:    {{ installation_summary.tailscale }}
+             └─ IP:        {{ installation_summary.tailscale_ip }}
+          
+          Docker:       {{ installation_summary.docker }}
+             └─ Version:   {{ docker_version.stdout | default('Unknown') }}
+          
+          K3s:          {{ installation_summary.k3s }}
+             └─ Config:    /home/{{ ansible_user_id }}/.kube/config
+          
+          uv-python:    {{ installation_summary.uv_python }}
+             └─ Location:  $HOME/.cargo/bin/uv
+          
+          ═══════════════════════════════════════════════════════════════
+          Post-Installation Notes:
+          ═══════════════════════════════════════════════════════════════
+          
+          1. Docker: Log out and back in for group membership to take effect
+             Or run: newgrp docker
+          
+          2. K3s: Access cluster with:
+             kubectl get nodes
+             export KUBECONFIG=/home/{{ ansible_user_id }}/.kube/config
+          
+          3. uv-python: Reload shell or run:
+             source ~/.bashrc
+          
+          4. Tailscale: If not authenticated, run:
+             sudo tailscale up
+          
+          ═══════════════════════════════════════════════════════════════

@@ -13,6 +13,14 @@
 - Vagrant
 - Virtual Box
 
+# Deployment steps
+- Have a VM ready (NUC, or rent on cloud, etc.)
+- Set up Ansible on the master host machine
+  - `inventory.ini` is configured
+  - `ansible.cfg` is configured
+- Apply the playbook
+  - Use [setup-playbook.yaml](setup-playbook.yaml)
+
 # Commands
 ```bash
 # List inventory
@@ -23,4 +31,23 @@ ansible all --limit vagrant_host1 -a "/bin/echo hello"
 
 # SSH into the guest VM
 vagrant ssh vagrant_host1
+
+# Save local VM state (to restore back to clean state)
+vagrant snapshot save clean-state
+vagrant snapshot restore clean-state
+
+# Apply playbook
+ansible-playbook setup-playbook.yaml
+
+# Check the playbook (not actually applying any changes)
+ansible-playbook setup-playbook.yaml --check
+
+# Skip all the tasks related to a component
+ansible-playbook setup-playbook-tagged.yaml --skip-tags uv
+
+# Disable the installation of a certain component
+ansible-playbook setup-playbook-tagged.yaml -e "install_k3s=false"
+
+# Start at a specific task
+ansible-playbook setup-playbook-tagged.yml --start-at-task="DOCKER | Install Docker packages"
 ```
