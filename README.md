@@ -6,6 +6,8 @@
 TODO: Add this.
 
 # Deployment steps
+## Environment
+Rename the `.env.example` file to `.env` and change the values as appropriate.
 ## Kafka
 ### Setup cluster
 ```bash
