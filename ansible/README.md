@@ -40,6 +40,9 @@ vagrant snapshot restore clean-state
 # Destroy the VM forcibly
 vagrant destroy --force
 
+# Show port info
+vagrant port
+
 # Apply playbook
 ansible-playbook setup-playbook.yaml
 

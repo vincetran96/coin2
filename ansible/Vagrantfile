@@ -28,6 +28,9 @@ Vagrant.configure("2") do |config|
     vagrant_host1.vm.provision "shell", inline: <<-SHELL
       echo "root:12345" | chpasswd
     SHELL
+
+    # Forward port
+    config.vm.network "forwarded_port", guest: 60094, host: 60094
   end
 
   # config.vm.define "vagrant_host2" do |vagrant_host2|
