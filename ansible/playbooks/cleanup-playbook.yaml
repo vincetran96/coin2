@@ -5,6 +5,9 @@
 # This playbook removes all components installed by setup-playbook.yml
 # in REVERSE order to avoid dependency issues
 #
+# Usage:
+#   ansible-playbook -i inventory.ini cleanup-playbook.yml
+#
 # WARNING: This will completely remove:
 #   - uv-python
 #   - K3s
@@ -15,24 +18,28 @@
 
 - name: Cleanup/Rollback Machine Setup
   hosts: all
-  become: yes
-  gather_facts: yes
+  become: true
+  gather_facts: true
   
   vars:
-    # User configuration
-    user_home: "/home/{{ ansible_user_id }}"
-    
     # Confirmation required (set to false to skip confirmation)
     require_confirmation: true
     
   tasks:
+    - name: "PRE | Determine actual SSH user"
+      set_fact:
+        # Get the actual SSH user, not root
+        actual_user: "{{ ansible_user }}"
+        actual_user_home: "/home/{{ ansible_user }}"
+      tags: always
+    
     - name: "CONFIRM | Display warning message"
       debug:
         msg: |
-          ===  WARNING ===
+          ⚠️  WARNING ⚠️  WARNING ⚠️  WARNING ⚠️
           
           This playbook will REMOVE:
-          • uv-python installation
+          • uv-python installation for user {{ actual_user }}
           • K3s cluster (all data will be lost!)
           • Docker (containers will be removed!)
           • Tailscale connection
@@ -66,29 +73,31 @@
     
     - name: "UV-PYTHON | Remove uv installation"
       file:
-        path: "{{ user_home }}/.cargo"
+        path: "{{ actual_user_home }}/.cargo"
         state: absent
       tags: [uv, cleanup_uv]
     
     - name: "UV-PYTHON | Remove PATH entries from .bashrc"
+      become: false
       lineinfile:
-        path: "{{ user_home }}/.bashrc"
+        path: "{{ actual_user_home }}/.bashrc"
         regexp: '.*\.cargo/bin.*'
         state: absent
       tags: [uv, cleanup_uv]
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "UV-PYTHON | Remove PATH entries from .profile"
+      become: false
       lineinfile:
-        path: "{{ user_home }}/.profile"
+        path: "{{ actual_user_home }}/.profile"
         regexp: '.*\.cargo/bin.*'
         state: absent
       tags: [uv, cleanup_uv]
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "UV-PYTHON | Display status"
       debug:
-        msg: "✓ uv-python removed"
+        msg: "✓ uv-python removed for user {{ actual_user }}"
       tags: [uv, cleanup_uv]
     
     # =========================================================================
@@ -106,7 +115,7 @@
         name: k3s
         state: stopped
       when: k3s_uninstall_script.stat.exists
-      ignore_errors: yes
+      ignore_errors: true
       tags: [k3s, cleanup_k3s]
     
     - name: "K3S | Run official uninstall script"
@@ -117,7 +126,7 @@
     
     - name: "K3S | Remove kubeconfig directory"
       file:
-        path: "{{ user_home }}/.kube"
+        path: "{{ actual_user_home }}/.kube"
         state: absent
       tags: [k3s, cleanup_k3s]
     
@@ -132,7 +141,7 @@
         path: /var/lib/rancher
         state: absent
       tags: [k3s, cleanup_k3s]
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "K3S | Display status"
       debug:
@@ -149,7 +158,7 @@
           docker stop $(docker ps -aq) 2>/dev/null || true
         fi
       tags: [docker, cleanup_docker]
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "DOCKER | Remove all containers"
       shell: |
@@ -157,7 +166,7 @@
           docker rm $(docker ps -aq) 2>/dev/null || true
         fi
       tags: [docker, cleanup_docker]
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "DOCKER | Remove all images"
       shell: |
@@ -165,7 +174,7 @@
           docker rmi $(docker images -q) 2>/dev/null || true
         fi
       tags: [docker, cleanup_docker]
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "DOCKER | Remove all volumes"
       shell: |
@@ -173,13 +182,13 @@
           docker volume rm $(docker volume ls -q) 2>/dev/null || true
         fi
       tags: [docker, cleanup_docker]
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "DOCKER | Stop Docker service"
       systemd:
         name: docker
         state: stopped
-      ignore_errors: yes
+      ignore_errors: true
       tags: [docker, cleanup_docker]
     
     - name: "DOCKER | Remove Docker packages"
@@ -191,17 +200,17 @@
           - docker-buildx-plugin
           - docker-compose-plugin
         state: absent
-        purge: yes
+        purge: true
       tags: [docker, cleanup_docker]
     
     - name: "DOCKER | Remove user from docker group"
       user:
-        name: "{{ ansible_user_id }}"
+        name: "{{ actual_user }}"
         groups: docker
-        append: no
-      when: ansible_user_id != 'root'
+        state: absent
+      when: actual_user != 'root'
       tags: [docker, cleanup_docker]
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "DOCKER | Remove Docker repository"
       file:
@@ -229,7 +238,7 @@
     
     - name: "DOCKER | Update apt cache"
       apt:
-        update_cache: yes
+        update_cache: true
       tags: [docker, cleanup_docker]
     
     - name: "DOCKER | Display status"
@@ -243,21 +252,21 @@
     
     - name: "TAILSCALE | Disconnect from Tailscale network"
       command: tailscale down
-      ignore_errors: yes
+      ignore_errors: true
       tags: [tailscale, cleanup_tailscale]
     
     - name: "TAILSCALE | Stop Tailscale service"
       systemd:
         name: tailscaled
         state: stopped
-      ignore_errors: yes
+      ignore_errors: true
       tags: [tailscale, cleanup_tailscale]
     
     - name: "TAILSCALE | Remove Tailscale package"
       apt:
         name: tailscale
         state: absent
-        purge: yes
+        purge: true
       tags: [tailscale, cleanup_tailscale]
     
     - name: "TAILSCALE | Remove Tailscale repository"
@@ -277,7 +286,7 @@
     
     - name: "TAILSCALE | Update apt cache"
       apt:
-        update_cache: yes
+        update_cache: true
       tags: [tailscale, cleanup_tailscale]
     
     - name: "TAILSCALE | Display status"
@@ -296,18 +305,18 @@
       loop:
         - /etc/systemd/system/k3s.service
         - /etc/systemd/system/docker.service.d
-      ignore_errors: yes
+      ignore_errors: true
       tags: always
     
     - name: "CLEANUP | Reload systemd daemon"
       systemd:
-        daemon_reload: yes
+        daemon_reload: true
       tags: always
     
     - name: "CLEANUP | Remove unused packages"
       apt:
-        autoremove: yes
-        autoclean: yes
+        autoremove: true
+        autoclean: true
       tags: always
     
     - name: "SUMMARY | Verify removals"
@@ -315,24 +324,24 @@
         - name: "SUMMARY | Check Tailscale removed"
           command: which tailscale
           register: check_tailscale
-          ignore_errors: yes
+          ignore_errors: true
           changed_when: false
         
         - name: "SUMMARY | Check Docker removed"
           command: which docker
           register: check_docker
-          ignore_errors: yes
+          ignore_errors: true
           changed_when: false
         
         - name: "SUMMARY | Check K3s removed"
           command: which k3s
           register: check_k3s
-          ignore_errors: yes
+          ignore_errors: true
           changed_when: false
         
         - name: "SUMMARY | Check uv removed"
           stat:
-            path: "{{ user_home }}/.cargo/bin/uv"
+            path: "{{ actual_user_home }}/.cargo/bin/uv"
           register: check_uv
       tags: always
     
@@ -340,16 +349,18 @@
       debug:
         msg: |
           ═══════════════════════════════════════════════════════════════
-          Cleanup Complete!
+          🧹 Cleanup Complete!
           ═══════════════════════════════════════════════════════════════
           
-          ✓ Tailscale:  {{ 'REMOVED' if check_tailscale.rc != 0 else '  Still present' }}
-          ✓ Docker:     {{ 'REMOVED' if check_docker.rc != 0 else '  Still present' }}
-          ✓ K3s:        {{ 'REMOVED' if check_k3s.rc != 0 else '  Still present' }}
-          ✓ uv-python:  {{ 'REMOVED' if not check_uv.stat.exists else '  Still present' }}
+          Target User: {{ actual_user }}
+          
+          ✓ Tailscale:  {{ 'REMOVED' if check_tailscale.rc != 0 else '⚠️  Still present' }}
+          ✓ Docker:     {{ 'REMOVED' if check_docker.rc != 0 else '⚠️  Still present' }}
+          ✓ K3s:        {{ 'REMOVED' if check_k3s.rc != 0 else '⚠️  Still present' }}
+          ✓ uv-python:  {{ 'REMOVED' if not check_uv.stat.exists else '⚠️  Still present' }}
           
           ═══════════════════════════════════════════════════════════════
-          Post-Cleanup Actions:
+          📝 Post-Cleanup Actions:
           ═══════════════════════════════════════════════════════════════
           
           1. Log out and back in to refresh group memberships
@@ -358,10 +369,10 @@
           4. Reboot if you want a completely clean state: sudo reboot
           
           ═══════════════════════════════════════════════════════════════
-          System State:
+          💾 System State:
           ═══════════════════════════════════════════════════════════════
           
-          All installed components have been removed.
+          All installed components have been removed for user {{ actual_user }}.
           Configuration files have been cleaned up.
           System should be in pre-installation state.
           

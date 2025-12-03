@@ -21,7 +21,7 @@
 # =============================================================================
 
 - name: Complete Machine Setup (Enhanced)
-  hosts: vagrant_host2
+  hosts: vagrant_host1
   become: true
   gather_facts: true
   
@@ -29,10 +29,6 @@
     # K3s Configuration
     k3s_token: "12345"  # CHANGE THIS! Use: openssl rand -hex 32
     tailscale_interface: "tailscale0"
-    
-    # Directories
-    user_home: "/home/{{ ansible_facts['user_id'] }}"
-    kube_config_dir: "{{ user_home }}/.kube"
     
     # Feature flags (can override at runtime)
     install_tailscale: true
@@ -50,37 +46,78 @@
       systemd:
         name: k3s
         state: restarted
-      ignore_errors: yes
+      ignore_errors: true
   
   pre_tasks:
+    - name: "PRE | Determine actual SSH user"
+      set_fact:
+        # Get the actual SSH user, not root
+        actual_user: "{{ ansible_user }}"
+        actual_user_home: "/home/{{ ansible_user }}"
+      tags: always
+    
     - name: "PRE | Display playbook information"
       debug:
         msg: |
-          ═══════════════════════════════════════════════════════════════
+          ===
           Starting Machine Setup Playbook
-          ═══════════════════════════════════════════════════════════════
-          Target Host: {{ ansible_facts["hostname"] | default(inventory_hostname) }}
-          User: {{ ansible_facts["user_id"] }}
-          OS: {{ ansible_facts["distribution"] }} {{ ansible_facts["distribution_version"] }}
-          Architecture: {{ ansible_facts["architecture"] }}
-          ═══════════════════════════════════════════════════════════════
+          ===
+          Target Host: {{ ansible_facts['hostname'] | default(inventory_hostname) }}
+          SSH User: {{ actual_user }}
+          User Home: {{ actual_user_home }}
+          OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
+          Architecture: {{ ansible_facts['architecture'] }}
+          ===
       tags: always
     
-    # - name: "PRE | Ensure system is Debian-based"
-    #   assert:
-    #     that:
-    #       - ansible_os_family == "Debian"
-    #     fail_msg: "This playbook only supports Debian-based systems (Debian/Ubuntu)"
-    #     success_msg: "✓ Debian-based system detected"
-    #   tags: always
+    - name: "PRE | Ensure system is Debian-based"
+      assert:
+        that:
+          - ansible_facts['os_family'] == "Debian"
+        fail_msg: "This playbook only supports Debian-based systems (Debian/Ubuntu)"
+        success_msg: "✓ Debian-based system detected"
+      tags: always
     
     - name: "PRE | Update apt cache"
       apt:
-        update_cache: yes
+        update_cache: true
         cache_valid_time: 3600
       tags: always
   
   tasks:
+    # =========================================================================
+    # CORE THINGS
+    # =========================================================================
+    - name: "CORE | Apt packages"
+      apt:
+        name:
+          - dnsutils
+          - iputils-ping
+          - ufw
+          - telnet
+          - tmux
+        state: present
+      tags: [core]
+
+    - name: "CORE | Check if UFW is installed"
+      command: which ufw
+      register: ufw_installed
+      ignore_errors: true
+      changed_when: false
+      tags: [core]
+
+    - name: "CORE | Enable UFW"
+      command: ufw --force enable
+      when:
+        - ufw_installed.rc == 0
+      tags: [core]
+
+    - name: "CORE | Allow SSH on port 22"
+      command: ufw allow 22/tcp
+      when:
+        - ufw_installed.rc == 0
+      tags: [core]
+
     # =========================================================================
     # TAILSCALE INSTALLATION
     # =========================================================================
@@ -88,9 +125,9 @@
     - name: "TAILSCALE | Check if already installed"
       command: which tailscale
       register: tailscale_check
-      ignore_errors: yes
+      ignore_errors: true
       changed_when: false
-      check_mode: no
+      check_mode: false
       tags: [tailscale, verify]
       when: install_tailscale | bool
     
@@ -119,27 +156,27 @@
     - name: "TAILSCALE | Check authentication status"
       command: tailscale status
       register: tailscale_status
-      ignore_errors: yes
+      ignore_errors: true
       changed_when: false
-      check_mode: no
+      check_mode: false
       tags: [tailscale, verify]
       when: install_tailscale | bool
     
     - name: "TAILSCALE | Attempt to start"
-      command: tailscale up --accept-routes
+      command: tailscale up --accept-routes  # Not sure if this is needed.
       when: 
         - install_tailscale | bool
         - tailscale_status.rc != 0
       register: tailscale_up
-      ignore_errors: yes
+      ignore_errors: true
       tags: tailscale
     
     - name: "TAILSCALE | Get IP address"
       shell: tailscale ip -4 | head -n 1
       register: tailscale_ip_result
       changed_when: false
-      ignore_errors: yes
-      check_mode: no
+      ignore_errors: true
+      check_mode: false
       tags: [tailscale, verify]
       when: install_tailscale | bool
     
@@ -172,7 +209,7 @@
           - podman-docker
         state: absent
       tags: docker
-      ignore_errors: yes
+      ignore_errors: true
       when: install_docker | bool
     
     - name: "DOCKER | Install prerequisites"
@@ -205,7 +242,7 @@
       shell: . /etc/os-release && echo "$VERSION_CODENAME"
       register: os_codename
       changed_when: false
-      check_mode: no
+      check_mode: false
       tags: docker
       when: install_docker | bool
     
@@ -225,7 +262,7 @@
     
     - name: "DOCKER | Update apt cache"
       apt:
-        update_cache: yes
+        update_cache: true
       when: 
         - install_docker | bool
         - docker_repo.changed
@@ -248,18 +285,18 @@
       systemd:
         name: docker
         state: started
-        enabled: yes
+        enabled: true
       tags: docker
       when: install_docker | bool
     
     - name: "DOCKER | Add user to docker group"
       user:
-        name: "{{ ansible_facts['user_id'] }}"
+        name: "{{ actual_user }}"
         groups: docker
-        append: yes
+        append: true
       when: 
         - install_docker | bool
-        - ansible_facts['user_id'] != 'root'
+        - actual_user != 'root'
       tags: docker
     
     - name: "DOCKER | Verify installation"
@@ -277,6 +314,16 @@
         - install_docker | bool
         - docker_version.stdout is defined
     
+    - name: "DOCKER | Display post-install note"
+      debug:
+        msg: |
+          Note: User '{{ actual_user }}' added to docker group.
+          To use docker without sudo, log out and back in, or run: newgrp docker
+      tags: docker
+      when:
+        - install_docker | bool
+        - actual_user != 'root'
+    
     # =========================================================================
     # K3S INSTALLATION
     # =========================================================================
@@ -284,9 +331,9 @@
     - name: "K3S | Check if already installed"
       command: which k3s
       register: k3s_check
-      ignore_errors: yes
+      ignore_errors: true
       changed_when: false
-      check_mode: no
+      check_mode: false
       tags: [k3s, verify]
       when: install_k3s | bool
     
@@ -324,19 +371,19 @@
         - install_k3s | bool
         - k3s_check.rc != 0
         - install_tailscale | bool
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "K3S | Create .kube directory"
       file:
-        path: "{{ kube_config_dir }}"
+        path: "{{ actual_user_home }}/.kube"
         state: directory
         mode: '0755'
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_id }}"
+        owner: "{{ actual_user }}"
+        group: "{{ actual_user }}"
       tags: k3s
       when: 
         - install_k3s | bool
-        - ansible_user_id != 'root'
+        - actual_user != 'root'
     
     - name: "K3S | Install K3s server"
       shell: |
@@ -345,7 +392,7 @@
         INSTALL_K3S_EXEC="server \
           --disable traefik \
           --disable servicelb \
-          --write-kubeconfig {{ kube_config_dir }}/config \
+          --write-kubeconfig {{ actual_user_home }}/.kube/config \
           --write-kubeconfig-mode 644 \
           --flannel-iface {{ tailscale_interface }} \
           --node-ip ${TAILSCALE_IP} \
@@ -365,16 +412,16 @@
     
     - name: "K3S | Fix kubeconfig ownership"
       file:
-        path: "{{ kube_config_dir }}/config"
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_id }}"
+        path: "{{ actual_user_home }}/.kube/config"
+        owner: "{{ actual_user }}"
+        group: "{{ actual_user }}"
         mode: '0644'
       tags: k3s
       when: 
         - install_k3s | bool
-        - ansible_user_id != 'root'
+        - actual_user != 'root'
         - k3s_install.changed
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "K3S | Wait for cluster to be ready"
       command: k3s kubectl get nodes
@@ -386,16 +433,27 @@
       when: 
         - install_k3s | bool
         - k3s_install.changed
-      ignore_errors: yes
+      ignore_errors: true
     
     - name: "K3S | Display cluster status"
       debug:
         msg: |
           ✓ K3s installed successfully
-          Kubeconfig: {{ kube_config_dir }}/config
+          Kubeconfig: {{ actual_user_home }}/.kube/config
           Cluster nodes: {{ k3s_nodes.stdout_lines | default(['Not available yet']) }}
       tags: [k3s, verify]
       when: 
+        - install_k3s | bool
+        - k3s_install.changed
+    
+    - name: "K3S | Display post-install note"
+      debug:
+        msg: |
+          Note: To use kubectl as user '{{ actual_user }}':
+          export KUBECONFIG={{ actual_user_home }}/.kube/config
+          Or add to ~/.bashrc: echo 'export KUBECONFIG={{ actual_user_home }}/.kube/config' >> ~/.bashrc
+      tags: k3s
+      when:
         - install_k3s | bool
         - k3s_install.changed
     
@@ -403,13 +461,13 @@
     # UV-PYTHON INSTALLATION
     # =========================================================================
     
-    - name: "UV | Check if already installed"
-      shell: |
-        su - {{ ansible_user_id }} -c "command -v uv"
+    - name: "UV | Check if already installed for user"
+      become: false
+      command: "{{ actual_user_home }}/.local/bin/uv --version"
       register: uv_check
-      ignore_errors: yes
+      ignore_errors: true
       changed_when: false
-      check_mode: no
+      check_mode: false
       tags: [uv, verify]
       when: install_uv | bool
     
@@ -418,15 +476,17 @@
         name:
           - wget
           - ca-certificates
+          - curl
         state: present
       tags: uv
       when: 
         - install_uv | bool
         - uv_check.rc != 0
     
-    - name: "UV | Download and install"
+    - name: "UV | Download and install for user"
+      become: false
       shell: |
-        su - {{ ansible_user_id }} -c "wget -qO- https://astral.sh/uv/install.sh | sh"
+        wget -qO- https://astral.sh/uv/install.sh | sh
       args:
         executable: /bin/bash
       tags: uv
@@ -434,47 +494,137 @@
         - install_uv | bool
         - uv_check.rc != 0
       register: uv_install
+      environment:
+        HOME: "{{ actual_user_home }}"
     
     - name: "UV | Add to PATH in .bashrc"
+      become: false
       lineinfile:
-        path: "{{ user_home }}/.bashrc"
-        line: 'export PATH="$HOME/.cargo/bin:/$HOME/.local/bin:$PATH"'
-        create: yes
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_id }}"
+        path: "{{ actual_user_home }}/.bashrc"
+        line: 'export PATH="$HOME/.local/bin:$PATH"'
+        create: true
       tags: uv
       when: 
         - install_uv | bool
-        - ansible_user_id != 'root'
-        - uv_install.changed
-    
-    - name: "UV | Add to PATH in .profile"
-      lineinfile:
-        path: "{{ user_home }}/.profile"
-        line: 'export PATH="$HOME/.cargo/bin:/$HOME/.local/bin:$PATH"'
-        create: yes
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_id }}"
-      tags: uv
-      when: 
-        - install_uv | bool
-        - ansible_user_id != 'root'
+        - actual_user != 'root'
         - uv_install.changed
     
     - name: "UV | Verify installation"
-      shell: |
-        su - {{ ansible_user_id }} -c "uv --version"
+      become: false
+      command: "{{ actual_user_home }}/.local/bin/uv --version"
       register: uv_version
-      ignore_errors: yes
+      ignore_errors: true
       changed_when: false
       tags: [uv, verify]
       when: install_uv | bool
     
     - name: "UV | Display version"
       debug:
-        msg: "✓ uv installed: {{ uv_version.stdout | default('Installation verification pending - reload shell') }}"
+        msg: "✓ uv installed for user '{{ actual_user }}': {{ uv_version.stdout | default('Installation verification pending - reload shell') }}"
       tags: [uv, verify]
       when: install_uv | bool
+    
+    - name: "UV | Display post-install note"
+      debug:
+        msg: |
+          Note: To use uv, reload your shell or run:
+          source ~/.bashrc
+          Or log out and back in.
+      tags: uv
+      when:
+        - install_uv | bool
+        - uv_install.changed
+
+    # =========================================================================
+    # KAFKA INSTALLATION
+    # =========================================================================
+    
+    - name: "KAFKA | Check if build directory exists on control machine"
+      become: false
+      delegate_to: localhost
+      stat:
+        path: "../../build"
+      register: build_dir_check
+      tags: [kafka]
+      when: install_kafka | default(true) | bool
+    
+    - name: "KAFKA | Verify build directory exists"
+      assert:
+        that:
+          - build_dir_check.stat.exists
+          - build_dir_check.stat.isdir
+        fail_msg: "Build directory does not exist at ../../build"
+        success_msg: "Build directory found"
+      tags: [kafka]
+      when: install_kafka | default(true) | bool
+    
+    - name: "KAFKA | Create target directory"
+      become: false
+      file:
+        path: "{{ actual_user_home }}/coin2"
+        state: directory
+        mode: '0755'
+        owner: "{{ actual_user }}"
+        group: "{{ actual_user }}"
+      tags: [kafka]
+      when: install_kafka | default(true) | bool
+    
+    - name: "KAFKA | Copy build directory contents to target"
+      become: false
+      copy:
+        src: "../../build/"
+        dest: "{{ actual_user_home }}/coin2/build"
+        owner: "{{ actual_user }}"
+        group: "{{ actual_user }}"
+        mode: preserve
+      tags: [kafka]
+      when: install_kafka | default(true) | bool
+    
+    - name: "KAFKA | Ensure UFW applications directory exists"
+      file:
+        path: /etc/ufw/applications.d
+        state: directory
+        mode: '0755'
+      tags: [kafka]
+      when: install_kafka | default(true) | bool
+    
+    - name: "KAFKA | Create UFW application profile"
+      copy:
+        dest: /etc/ufw/applications.d/kafka
+        content: |
+          [Kafka]
+          title=Kafka ports
+          description=For access into Kafka Docker cluster
+          ports=9200:9204/tcp
+        mode: '0644'
+      tags: [kafka]
+      when: install_kafka | default(true) | bool
+    
+    - name: "KAFKA | Check if UFW is active"
+      command: ufw status
+      register: ufw_status
+      ignore_errors: true
+      changed_when: false
+      tags: [kafka]
+      when: install_kafka | default(true) | bool
+    
+    - name: "KAFKA | Allow Kafka ports in UFW"
+      command: ufw allow Kafka
+      when:
+        - install_kafka | default(true) | bool
+        - ufw_status.rc == 0
+        - "'inactive' not in ufw_status.stdout"
+      tags: [kafka]
+    
+    - name: "KAFKA | Display status"
+      debug:
+        msg: |
+          Kafka setup complete
+          Build contents copied to: {{ actual_user_home }}/coin2
+          UFW profile created: /etc/ufw/applications.d/kafka
+          Ports 9200-9204 allowed in firewall
+      tags: [kafka]
+      when: install_kafka | default(true) | bool
     
   post_tasks:
     # =========================================================================
@@ -486,28 +636,29 @@
         - name: "VERIFY | Check Tailscale"
           command: tailscale version
           register: verify_tailscale
-          ignore_errors: yes
+          ignore_errors: true
           changed_when: false
           when: install_tailscale | bool
         
         - name: "VERIFY | Check Docker"
           command: docker --version
           register: verify_docker
-          ignore_errors: yes
+          ignore_errors: true
           changed_when: false
           when: install_docker | bool
         
         - name: "VERIFY | Check K3s"
           command: k3s --version
           register: verify_k3s
-          ignore_errors: yes
+          ignore_errors: true
           changed_when: false
           when: install_k3s | bool
         
         - name: "VERIFY | Check uv"
-          shell: su - {{ ansible_user_id }} -c "$HOME/.cargo/bin/uv --version"
+          become: false
+          command: "{{ actual_user_home }}/.local/bin/uv --version"
           register: verify_uv
-          ignore_errors: yes
+          ignore_errors: true
           changed_when: false
           when: install_uv | bool
       tags: [verify, always]
@@ -515,38 +666,46 @@
     - name: "SUMMARY | Display final summary"
       debug:
         msg: |
-          ═══════════════════════════════════════════════════════════════
+          ===
           Installation Complete!
-          ═══════════════════════════════════════════════════════════════
+          ===
+          
+          Target User: {{ actual_user }}
+          User Home: {{ actual_user_home }}
           
           {% if install_tailscale %}
           Tailscale:    {{ 'OK' if verify_tailscale.rc == 0 else 'Needs Authentication' }}
              └─ IP:        {{ tailscale_ip | default('Run: sudo tailscale up') }}
+             └─ Access:    sudo tailscale status
           {% endif %}
           
           {% if install_docker %}
           Docker:       {{ 'OK' if verify_docker.rc == 0 else 'Check failed' }}
              └─ Version:   {{ verify_docker.stdout | default('N/A') }}
+             └─ Access:    docker ps (after logout/login or 'newgrp docker')
           {% endif %}
           
           {% if install_k3s %}
           K3s:          {{ 'OK' if verify_k3s.rc == 0 else 'Check failed' }}
-             └─ Config:    {{ kube_config_dir }}/config
+             └─ Config:    {{ actual_user_home }}/.kube/config
+             └─ Access:    sudo k3s kubectl get nodes
+                          or: kubectl get nodes (after setting KUBECONFIG)
           {% endif %}
           
           {% if install_uv %}
           uv-python:    {{ 'OK' if verify_uv.rc == 0 else 'Check failed' }}
-             └─ Location:  $HOME/.cargo/bin/uv
+             └─ Location:  {{ actual_user_home }}/.local/bin/uv
+             └─ Access:    uv --version (after source ~/.bashrc)
           {% endif %}
           
-          ═══════════════════════════════════════════════════════════════
+          ===
           Next Steps:
-          ═══════════════════════════════════════════════════════════════
+          ===
           
           1. Reload your shell: source ~/.bashrc
           2. For Docker: newgrp docker (or log out/in)
-          3. For K3s: export KUBECONFIG={{ kube_config_dir }}/config
+          3. For K3s: export KUBECONFIG={{ actual_user_home }}/.kube/config
           4. For Tailscale: sudo tailscale up (if not authenticated)
           
-          ═══════════════════════════════════════════════════════════════
+          ===
       tags: always
