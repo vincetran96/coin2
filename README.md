@@ -1,5 +1,6 @@
 # Prerequisites
 - Assuming that we're running on Tailscale & K3s
+- Refer to [Ansible README](ansible/README.md)
 
 
 # Architecture

@@ -21,7 +21,7 @@
 # =============================================================================
 
 - name: Complete Machine Setup (Enhanced)
-  hosts: vagrant_host1
+  hosts: all
   become: true
   gather_facts: true
   
@@ -119,57 +119,10 @@
       tags: [core]
 
     # =========================================================================
-    # TAILSCALE INSTALLATION
+    # TAILSCALE THINGS
+    # Setting up Tailscale requires interaction and careful network considerations,
+    # so we may have to do it outside of Ansible playbook.
     # =========================================================================
-    
-    - name: "TAILSCALE | Check if already installed"
-      command: which tailscale
-      register: tailscale_check
-      ignore_errors: true
-      changed_when: false
-      check_mode: false
-      tags: [tailscale, verify]
-      when: install_tailscale | bool
-    
-    - name: "TAILSCALE | Install prerequisites"
-      apt:
-        name:
-          - curl
-          - ca-certificates
-        state: present
-      tags: tailscale
-      when: 
-        - install_tailscale | bool
-        - tailscale_check.rc != 0
-    
-    - name: "TAILSCALE | Download and install"
-      shell: |
-        curl -fsSL https://tailscale.com/install.sh | sh
-      args:
-        executable: /bin/bash
-      tags: tailscale
-      when: 
-        - install_tailscale | bool
-        - tailscale_check.rc != 0
-      register: tailscale_install
-    
-    - name: "TAILSCALE | Check authentication status"
-      command: tailscale status
-      register: tailscale_status
-      ignore_errors: true
-      changed_when: false
-      check_mode: false
-      tags: [tailscale, verify]
-      when: install_tailscale | bool
-    
-    - name: "TAILSCALE | Attempt to start"
-      command: tailscale up --accept-routes  # Not sure if this is needed.
-      when: 
-        - install_tailscale | bool
-        - tailscale_status.rc != 0
-      register: tailscale_up
-      ignore_errors: true
-      tags: tailscale
     
     - name: "TAILSCALE | Get IP address"
       shell: tailscale ip -4 | head -n 1
@@ -229,10 +182,16 @@
         mode: '0755'
       tags: docker
       when: install_docker | bool
+
+    - name: "DOCKER | Determine OS type for Docker repo"
+      set_fact:
+        docker_os: "{{ 'ubuntu' if ansible_facts['distribution'] == 'Ubuntu' else 'debian' }}"
+      tags: docker
+      when: install_docker | bool
     
     - name: "DOCKER | Add GPG key"
       get_url:
-        url: https://download.docker.com/linux/debian/gpg
+        url: https://download.docker.com/linux/{{ docker_os }}/gpg
         dest: /etc/apt/keyrings/docker.asc
         mode: '0644'
       tags: docker
@@ -251,7 +210,7 @@
         dest: /etc/apt/sources.list.d/docker.sources
         content: |
           Types: deb
-          URIs: https://download.docker.com/linux/debian
+          URIs: https://download.docker.com/linux/{{ docker_os }}
           Suites: {{ os_codename.stdout }}
           Components: stable
           Signed-By: /etc/apt/keyrings/docker.asc
