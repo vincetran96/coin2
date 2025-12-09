@@ -1,0 +1,16 @@
+<clickhouse>
+  <users>
+    <app_inserter>
+      <password>ChangeMe123</password>
+
+      <!-- restrict networks to host/docker bridge; adjust to your LAN/Tailscale as needed -->
+      <networks>
+        <ip>::/0</ip>
+        <!-- <ip>127.0.0.1/32</ip> -->
+      </networks>
+
+      <profile>default</profile>
+      <quota>default</quota>
+    </app_inserter>
+  </users>
+</clickhouse>

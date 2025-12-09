@@ -5,7 +5,7 @@ services:
     ports:
       - "19090:9090"
     volumes:
-      - ./monitoring/prometheus:/etc/prometheus
+      - ./monitoring/.mnt/prometheus:/etc/prometheus
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
@@ -20,7 +20,7 @@ services:
       - "63000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/.mnt/grafana/provisioning:/etc/grafana/provisioning
 
 volumes:
   grafana-data:

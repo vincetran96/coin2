@@ -26,7 +26,7 @@ spec:
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
           command: ["uv"]
-          args: ["run", "-m", "app.insert.insert"]
+          args: ["run", "-m", "app.etl.insert"]
           envFrom:
           - configMapRef:
               name: env

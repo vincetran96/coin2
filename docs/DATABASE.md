@@ -7,7 +7,7 @@ sudo mkdir -p build/.mnt/clickhouse/{data,users,log}
 # sudo chown -R $(id -u):$(id -g) build/.mnt/clickhouse
 ```
 
-Add a file `build/.mnt/clickhouse/users/app-inserter.xml` with this content:
+Add a file `build/clickhouse/.mnt/users/app-inserter.xml` with this content:
 ```xml
 <clickhouse>
   <users>

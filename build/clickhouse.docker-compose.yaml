@@ -9,10 +9,10 @@ services:
       - "8123:8123"   # HTTP interface
       - "9009:9009"   # interserver HTTP (replication, distributed)
     volumes:
-      - ./.mnt/clickhouse/data:/var/lib/clickhouse
-      - ./.mnt/clickhouse/users:/etc/clickhouse-server/users.d
-      - ./.mnt/clickhouse/log:/var/log/clickhouse-server
-      # - ./.mnt/clickhouse/config:/etc/clickhouse-server/config.d  # Mounting the config dir may cause connection issues
+      - ./clickhouse/.mnt/data:/var/lib/clickhouse
+      - ./clickhouse/.mnt/users:/etc/clickhouse-server/users.d
+      - ./clickhouse/.mnt/log:/var/log/clickhouse-server
+      # - ./clickhouse/.mnt/config:/etc/clickhouse-server/config.d  # Mounting the config dir may cause connection issues
     ulimits:
       nofile:
         soft: 262144
