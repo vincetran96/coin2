@@ -20,12 +20,12 @@ docker compose -f build/kafka.docker-compose.yaml up --force-recreate -d
 - https://medium.com/@oredata-engineering/setting-up-prometheus-grafana-for-kafka-on-docker-8a692a45966c
 #### UFW config
 - Create a file named `/etc/ufw/applications.d/kafka`:
-    ```
-    [Kafka]
-    title=Kafka ports
-    description=For access into Kafka Docker cluster
-    ports=9200:9204/tcp
-    ```
+  ```
+  [Kafka]
+  title=Kafka ports
+  description=For access into Kafka Docker cluster
+  ports=9200:9204/tcp
+  ```
 - Run `sudo ufw allow Kafka`
 #### Service data export config examples
 **Option 1. KMinion**
@@ -47,6 +47,16 @@ docker compose -f build/monitoring.docker-compose.yaml up --force-recreate -d
 - Check the following endpoint for Prometheus datasources' status: `http://TAILSCALE_IP:19090/targets`
   - If the Prometheus data source for Grafana doesn't exist, manually add this: endpoint: `http://prometheus:9090`
 - Import dashboards into Grafana from [here](./assets/monitoring/grafana/dashboards/).
+## Database
+The database can be ClickHouse, etc. To get started, see [](docs/DATABASE.md).
+- ClickHouse quick commands:
+  ```bash
+  # To start server
+  docker compose -f build/clickhouse.docker-compose.yaml up --force-recreate -d
+
+  # To shutdown server
+  docker rm -f ch-db
+  ```
 ## Build Coin app Docker image
 ```bash
 chmod +x build/coin2.build.sh
