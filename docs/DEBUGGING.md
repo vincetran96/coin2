@@ -40,3 +40,8 @@ docker run -it --rm --network=host apache/kafka:3.9.1 \
 # Reset offset
 ./bin/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9094 --group inserter-consumer --reset-offsets --to-earliest --all-topics --execute
 ```
+
+# Coin app
+```bash
+KAFKA_BOOTSTRAP_SERVER=TAILSCAL_IP:9094 uv run -m app.etl.raw_cli -t ws-binance --output_dir temp
+```
