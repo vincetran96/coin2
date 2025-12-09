@@ -15,7 +15,11 @@ _old*
 *.jar
 *.tar
 docker_data/
-bin/
+bin/*/
+ansible/.vagrant
+ansible/inventory.ini
+*/.mnt
+temp/
 
 *-configmap.yaml
 
@@ -181,7 +185,3 @@ cython_debug/
 #.idea/
 
 .DS_Store
-ansible/.vagrant
-ansible/inventory.ini
-*/.mnt
-temp/
