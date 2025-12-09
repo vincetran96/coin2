@@ -6,3 +6,5 @@ KAFKA_FETCH_TOPICS = [
     "ws-bybit",
     "ws-okx"
 ]
+
+INSERTER_KAFKA_GROUP_ID = "inserter-consumer"

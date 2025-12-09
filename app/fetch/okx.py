@@ -33,6 +33,7 @@ MAX_SYMBOLS_PER_CONNECTION = 200  # Manually adjusted
 
 def get_symbols(limit: int = 1000, inst_type: str = "SPOT") -> List[str]:
     """Get all symbols
+
     Source: https://www.okx.com/docs-v5/en/#public-data-rest-api-get-instruments
 
     Args:

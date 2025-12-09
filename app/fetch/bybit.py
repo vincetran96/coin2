@@ -34,6 +34,7 @@ MAX_SYMBOLS_PER_CONNECTION = 200  # Manually adjusted
 
 def get_symbols(limit: int = 1000, category: str = "spot") -> List[str]:
     """Get all symbols
+
     Source: https://bybit-exchange.github.io/docs/v5/market/instrument
 
     Args:
@@ -52,6 +53,7 @@ def get_symbols(limit: int = 1000, category: str = "spot") -> List[str]:
 
 async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
+
     Source:
       - https://bybit-exchange.github.io/docs/v5/websocket/public/kline
 

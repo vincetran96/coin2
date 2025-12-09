@@ -51,6 +51,7 @@ def get_symbols(limit: int = 1000) -> List[str]:
 
 async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
+
     Source:
       - https://binance-docs.github.io/apidocs/spot/en/#kline-candlestick-streams-for-utc
       - https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams#klinecandlestick-streams-for-utc

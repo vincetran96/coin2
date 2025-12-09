@@ -33,6 +33,7 @@ MAX_CHANNELS_PER_CONNECTION = 25
 
 def get_symbols(limit: int = 1000) -> List[str]:
     """Get all symbols
+
     Source: https://docs.bitfinex.com/reference/rest-public-conf#listing-requests
 
     Args:
@@ -49,6 +50,7 @@ def get_symbols(limit: int = 1000) -> List[str]:
 
 async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     """Subscribe to symbols candle lines data, 1m interval
+
     Source:
       - https://docs.bitfinex.com/reference/ws-public-candles
 
