@@ -48,7 +48,7 @@ docker compose -f build/monitoring.docker-compose.yaml up --force-recreate -d
   - If the Prometheus data source for Grafana doesn't exist, manually add this: endpoint: `http://prometheus:9090`
 - Import dashboards into Grafana from [here](./assets/monitoring/grafana/dashboards/).
 ## Database
-The database can be ClickHouse, etc. To get started, see [](docs/DATABASE.md).
+The database can be ClickHouse, etc. To get started, see [DATABASE](docs/DATABASE.md).
 - ClickHouse quick commands:
   ```bash
   # To start server
