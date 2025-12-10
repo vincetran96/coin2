@@ -70,13 +70,15 @@ chmod +x build/coin2.local-k8s-repo.sh
 kubectl create ns coin2
 kubectl create -f k8s/coin2-configmap.yaml
 ```
+### Update some configs
+Update appropriate values in `k8s/coin2-volume.example.yaml` (remove ".example" part).
 ### Start the app
 ```bash
 kubectl apply \
     -f k8s/coin2-heartbeat.yaml \
     -f k8s/coin2-fetch.yaml \
-    -f k8s/coin2-insert.yaml \
-    -f k8s/coin2-pvc.yaml
+    -f k8s/coin2-etl.yaml \
+    -f k8s/coin2-volume.yaml
 ```
 
 
