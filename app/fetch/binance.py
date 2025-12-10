@@ -19,10 +19,9 @@ import requests
 import websockets
 from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
-from common.consts import KAFKA_PRODUCE_BATCHSIZE, LOG_FORMAT
-from common.kafka import create_producer
+from common.consts import KAFKA_PRODUCE_BATCHSIZE, KAFKA_PRODUCE_TIMEOUT, LOG_FORMAT
 from app.consts import ASYNCIO_SLEEP, REST_TIMEOUT
-from app.fetch.kafka import send_to_kafka
+from app.kafka import KafkaAccSender
 
 
 HTTP_URI = "https://api.binance.com/api/v3"
@@ -66,7 +65,10 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
 
     """
     backoff_delay = BACKOFF_TIME
-    kafka_producer = create_producer()
+    kafka_acc_sender = KafkaAccSender(
+        topic=KAFKA_TOPIC, batchsize=KAFKA_PRODUCE_BATCHSIZE, send_timeout=KAFKA_PRODUCE_TIMEOUT, key="symbol"
+    )
+
     async for con in websockets.connect(uri=WS_URI):
         try:
             await con.send(
@@ -82,7 +84,6 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
             logging.info(f"Connection {con_id}: Successful, num symbols: {len(symbols)}")
 
             backoff_delay = BACKOFF_TIME
-            data_list = []
             async for msg_ in con:
                 msg = json.loads(msg_)
                 if (
@@ -103,13 +104,8 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
                         'close_': msg['k']['c'],
                         'volume_': msg['k']['v'],
                     }
-                    data_list.append(data)
-                if len(data_list) >= KAFKA_PRODUCE_BATCHSIZE:
-                    logging.info(f"Connection {con_id}: Sending data list to Kafka")
-                    send_to_kafka(
-                        producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
-                    )
-                    data_list = []
+                    kafka_acc_sender.add(data)
+                kafka_acc_sender.send()
                 await asyncio.sleep(ASYNCIO_SLEEP)
 
         except (ConnectionClosed, InvalidStatusCode) as exc:

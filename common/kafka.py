@@ -2,9 +2,10 @@
 """
 # pylint: disable-all
 # noqa: E501
+import json
 import logging
 from contextlib import closing
-from typing import List
+from typing import Any, List
 
 from confluent_kafka import Consumer, Producer
 from confluent_kafka.admin import AdminClient, NewTopic
@@ -76,5 +77,23 @@ def create_new_topics(topics: List[str], num_partitions: int, replication_factor
         try:
             f.result()
             logging.info("Topic {} created".format(topic))
-        except (Exception, ) as e:
-            logging.error("Failed to create topic {}: {}".format(topic, e))
+        except (Exception, ) as exc:
+            logging.error("Failed to create topic {}: {}".format(topic, exc))
+
+
+def send_to_kafka(producer: Producer, topic: str, data_list: List[dict], key: str = None):
+    """Send data (as a list of dict) to Kafka
+
+    Source: https://github.com/confluentinc/confluent-kafka-python
+
+    Args:
+        producer (Producer): Kafka producer
+        topic (str): Topic
+        data_list (List[dict]): List of data
+        key (str): Dictionary key to use as the key for the message; Must exist in the data element
+    """
+    for data in data_list:
+        producer.poll(timeout=0)
+        producer.produce(topic=topic, value=json.dumps(data), key=data[key] if key is not None else None)
+    producer.flush()
+    logging.info(f"Finished sending {len(data_list)} records to Kafka")
