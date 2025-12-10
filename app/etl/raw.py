@@ -105,8 +105,8 @@ def consume_from_kafka(
                 # Accumulate message data into batch
                 data.append(msg)
 
-            # Write data to disk when batchsize or timeout reached
-            if len(data) >= write_batchsize or time.monotonic() - start_ts >= write_timeout:
+            # Write data to disk when there is data, and batchsize or timeout reached
+            if data and (len(data) >= write_batchsize or time.monotonic() - start_ts >= write_timeout):
                 elapsed_ts = time.monotonic() - start_ts
                 try:
                     filename = _make_unique_filename(
@@ -117,8 +117,8 @@ def consume_from_kafka(
                 except Exception as exc:
                     logging.exception("Failed to write batch to file: %s", exc)
                 finally:
+                    logging.info(f"Processed {len(data)} msgs in {elapsed_ts:.2f} secs ({write_batchsize / elapsed_ts:.2f} msgs/s)")
                     data = []
                     batch_start_offset, batch_end_offset = None, None
                     start_ts = time.monotonic()
                     consumer.commit()
-                    logging.info(f"Processed {write_batchsize} msg in {elapsed_ts:.2f} secs ({write_batchsize / elapsed_ts:.2f} msg/s)")
