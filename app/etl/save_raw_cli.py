@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List, NoReturn
 
 from app.configs import KAFKA_FETCH_TOPICS, INSERTER_KAFKA_GROUP_ID
-from app.etl.raw import consume_from_kafka
+from app.etl.save_raw import consume_from_kafka
 from common.consts import KAFKA_CONSUME_BATCHSIZE, LOG_FORMAT
 from common.kafka import create_consumer
 from data.clickhouse.base_inserter import BaseInserter

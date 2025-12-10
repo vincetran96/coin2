@@ -63,6 +63,9 @@ def consume_from_kafka(
     Currently we set the write batch size equal to the Kafka batch size.
     We consume from only one topic because each exchange's message schema can be different.
 
+    We assume that the message string follows a JSON-like format, and thus
+    we convert it to a dict first before writing to disk.
+
     Args:
         topic (str): Topic name
         group_id (str): Group ID of this consumer
@@ -101,7 +104,7 @@ def consume_from_kafka(
                     batch_end_offset = offset
                 
                 # Accumulate message data into batch
-                data.append(msg)
+                data.append(json.loads(msg))
 
             # Write data to disk when there is data, and batchsize or timeout reached
             if data and (len(data) >= write_batchsize or time.monotonic() - start_ts >= write_timeout):
