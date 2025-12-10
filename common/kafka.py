@@ -81,7 +81,7 @@ def create_new_topics(topics: List[str], num_partitions: int, replication_factor
             logging.error("Failed to create topic {}: {}".format(topic, exc))
 
 
-def send_to_kafka(producer: Producer, topic: str, data_list: List[dict], key: str = None):
+def send_to_kafka(producer: Producer, topic: str, data_list: List[dict], data_key: str = None):
     """Send data (as a list of dict) to Kafka
 
     Source: https://github.com/confluentinc/confluent-kafka-python
@@ -90,10 +90,10 @@ def send_to_kafka(producer: Producer, topic: str, data_list: List[dict], key: st
         producer (Producer): Kafka producer
         topic (str): Topic
         data_list (List[dict]): List of data
-        key (str): Dictionary key to use as the key for the message; Must exist in the data element
+        data_key (str): Dictionary key to use as the key for the message; Must exist in the data element
     """
     for data in data_list:
         producer.poll(timeout=0)
-        producer.produce(topic=topic, value=json.dumps(data), key=data[key] if key is not None else None)
+        producer.produce(topic=topic, value=json.dumps(data), key=data[data_key] if data_key is not None else None)
     producer.flush()
     logging.info(f"Finished sending {len(data_list)} records to Kafka")
