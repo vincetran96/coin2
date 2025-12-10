@@ -22,6 +22,7 @@ ansible/inventory.ini
 temp/
 
 *-configmap.yaml
+*-volume.yaml
 
 # .gitignore template
 # Byte-compiled / optimized / DLL files
