@@ -66,7 +66,7 @@ async def _subscribe(symbols: List[str], con_id: int = 0) -> NoReturn:
     """
     backoff_delay = BACKOFF_TIME
     kafka_acc_sender = KafkaAccSender(
-        topic=KAFKA_TOPIC, batchsize=KAFKA_PRODUCE_BATCHSIZE, send_timeout=KAFKA_PRODUCE_TIMEOUT, key="symbol"
+        topic=KAFKA_TOPIC, batchsize=KAFKA_PRODUCE_BATCHSIZE, send_timeout=KAFKA_PRODUCE_TIMEOUT, data_key="symbol"
     )
 
     async for con in websockets.connect(uri=WS_URI):
