@@ -7,7 +7,7 @@ metadata:
   labels:
     app: coin2
   namespace: coin2
-  name: coin2-fetcher
+  name: coin2-etl
 spec:
   replicas: 1
   selector:
@@ -22,27 +22,46 @@ spec:
         app: coin2
     spec:
       initContainers:
-        - name: coin2-fetch-init
+        - name: coin2-etl-init
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
           command: ["uv"]
-          args: ["run", "-m", "app.fetch.init"]
+          args: ["run", "-m", "app.etl.init"]
           envFrom:
           - configMapRef:
               name: env
       containers:
-        - name: coin2-fetch-binance
+        - name: coin2-etl-save-raw-binance
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
           command: ["uv"]
-          args: ["run", "-m", "app.fetch.binance"]
+          args: ["run", "-m", "app.etl.save_raw_cli", "-t", "ws-binance", "--output_dir", "/raw"]
           envFrom:
           - configMapRef:
               name: env
           resources:
             limits:
-              memory: 512Mi
+              memory: 256Mi
               cpu: 0.5
+          volumeMounts:
+          - name: storage
+            mountPath: /raw
+        - name: coin2-etl-watch-raw
+          image: vincetran96/coin2:test
+          imagePullPolicy: IfNotPresent
+          command: ["uv"]
+          args: ["run", "-m", "app.etl.watch_raw_cli", "--dir", "/raw"]
+          envFrom:
+          - configMapRef:
+              name: env
+          resources:
+            limits:
+              memory: 64Mi
+              cpu: 0.5
+          volumeMounts:
+          - name: storage
+            mountPath: /raw
+
         # - name: coin2-fetch-bitfinex
         #   image: vincetran96/coin2:test
         #   imagePullPolicy: IfNotPresent
@@ -79,4 +98,8 @@ spec:
         #     limits:
         #       memory: 128Mi
         #       cpu: 0.5
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: coin2-pvc-raw
       restartPolicy: Always

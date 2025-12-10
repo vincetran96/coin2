@@ -46,4 +46,7 @@ KAFKA_BOOTSTRAP_SERVER=TAILSCALE_IP:9094 uv run -m app.fetch.binance
 
 # Save raw data
 KAFKA_BOOTSTRAP_SERVER=TAILSCALE_IP:9094 uv run -m app.etl.save_raw_cli -t ws-binance --output_dir temp
+
+# Execute shell inside pod
+kubectl exec -n coin2 -it coin2-fetch -- sh
 ```

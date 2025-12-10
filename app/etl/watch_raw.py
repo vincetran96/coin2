@@ -29,9 +29,8 @@ class KafkaEventHandler(LoggingEventHandler):
         self._sender = kafka_sender
 
     def on_closed(self, event: FileSystemEvent) -> None:
-        """Send the event to the Kafka topic
+        """Add the event to the sender
         """
-        self.logger.info(event)
         self._sender.add(asdict(event))
 
 
@@ -45,7 +44,7 @@ def watch_dir(dir: str) -> NoReturn:
     observer = Observer()
     kafka_sender = KafkaAccSender(topic=KAFKA_TOPIC, batchsize=10, send_timeout=KAFKA_PRODUCE_TIMEOUT)
     event_handler = KafkaEventHandler(kafka_sender=kafka_sender)
-    observer.schedule(event_handler, "temp", recursive=True)
+    observer.schedule(event_handler, dir, recursive=True)
     observer.start()
     try:
         while True:
