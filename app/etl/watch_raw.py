@@ -6,11 +6,12 @@ import logging
 import os
 import time
 from dataclasses import asdict
+from typing import NoReturn
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler, LoggingEventHandler
 from watchdog.observers import Observer
 
-from common.consts import KAFKA_PRODUCE_BATCHSIZE, KAFKA_PRODUCE_TIMEOUT
+from common.consts import KAFKA_PRODUCE_TIMEOUT
 from app.kafka import KafkaAccSender
 
 
@@ -30,11 +31,17 @@ class KafkaEventHandler(LoggingEventHandler):
     def on_closed(self, event: FileSystemEvent) -> None:
         """Send the event to the Kafka topic
         """
-        print(event)
+        self.logger.info(event)
         self._sender.add(asdict(event))
 
 
-if __name__ == "__main__":
+def watch_dir(dir: str) -> NoReturn:
+    """
+    Watch directory for filesystem changes and push such events to Kafka
+
+    Args:
+        dir (str):
+    """
     observer = Observer()
     kafka_sender = KafkaAccSender(topic=KAFKA_TOPIC, batchsize=10, send_timeout=KAFKA_PRODUCE_TIMEOUT)
     event_handler = KafkaEventHandler(kafka_sender=kafka_sender)

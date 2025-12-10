@@ -1,4 +1,4 @@
-"""Administrative operations for fetching work,
+"""Administrative operations for ETL work,
 meant to be run once and exit
 """
 import logging
