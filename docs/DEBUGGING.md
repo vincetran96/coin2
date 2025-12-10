@@ -41,5 +41,9 @@
 
 # Coin app
 ```bash
-KAFKA_BOOTSTRAP_SERVER=TAILSCAL_IP:9094 uv run -m app.etl.raw_cli -t ws-binance --output_dir temp
+# Fetch from binance
+KAFKA_BOOTSTRAP_SERVER=TAILSCALE_IP:9094 uv run -m app.fetch.binance
+
+# Save raw data
+KAFKA_BOOTSTRAP_SERVER=TAILSCALE_IP:9094 uv run -m app.etl.save_raw_cli -t ws-binance --output_dir temp
 ```
