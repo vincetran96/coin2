@@ -11,8 +11,6 @@ import time
 from pathlib import Path
 from typing import List, NoReturn
 
-from app.configs import KAFKA_FETCH_TOPICS
-from common.consts import KAFKA_BATCHSIZE, LOG_FORMAT
 from common.kafka import create_consumer
 from data.clickhouse.base_inserter import BaseInserter
 

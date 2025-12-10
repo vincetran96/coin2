@@ -17,7 +17,7 @@ import requests
 import websockets
 from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
-from common.consts import KAFKA_BATCHSIZE, LOG_FORMAT
+from common.consts import KAFKA_PRODUCE_BATCHSIZE, LOG_FORMAT
 from common.kafka import create_producer
 from app.consts import ASYNCIO_SLEEP, REST_TIMEOUT
 from app.fetch.kafka import send_to_kafka
@@ -106,8 +106,8 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
                         'volume_': msg[1][5],
                     }
                     data_list.append(data)
-                if len(data_list) >= KAFKA_BATCHSIZE:
-                    logging.info(f"Connection {con_id}: Sending data list to kafka")
+                if len(data_list) >= KAFKA_PRODUCE_BATCHSIZE:
+                    logging.info(f"Connection {con_id}: Sending data list to Kafka")
                     send_to_kafka(
                         producer=kafka_producer, topic=KAFKA_TOPIC, data_list=data_list
                     )
