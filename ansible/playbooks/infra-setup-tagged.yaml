@@ -17,7 +17,7 @@
 #   # Skip uv-python installation
 #   ansible-playbook -i inventory.ini setup-playbook-tagged.yml --skip-tags uv
 #
-# Available Tags: tailscale, docker, k3s, uv, verify
+# Available Tags: core, tailscale, docker, k3s, uv, kafka, storage, verify
 # =============================================================================
 
 - name: Complete Machine Setup (Enhanced)
@@ -35,6 +35,13 @@
     install_docker: true
     install_k3s: true
     install_uv: true
+    install_storage: true
+
+    # Storage Configuration
+    storage_base_dir: "coin2"
+    storage_subdirs:
+      - "raw"
+      - "logs"
     
   handlers:
     - name: restart docker
@@ -584,6 +591,52 @@
           Ports 9200-9204 allowed in firewall
       tags: [kafka]
       when: install_kafka | default(true) | bool
+
+    # =========================================================================
+    # STORAGE SETUP
+    # =========================================================================
+
+    # - name: "STORAGE | Create coin2 directory if not exists"
+    #   become: false
+    #   file:
+    #     path: "{{ actual_user_home }}/coin2"
+    #     state: directory
+    #     mode: '0755'
+    #     owner: "{{ actual_user }}"
+    #     group: "{{ actual_user }}"
+    #   tags: [storage]
+
+    - name: "STORAGE | Create temp subdirectory"
+      become: false
+      file:
+        path: "{{ actual_user_home }}/coin2/temp"
+        state: directory
+        mode: '0755'
+        owner: "{{ actual_user }}"
+        group: "{{ actual_user }}"
+      tags: [storage]
+      when: install_storage | bool
+
+    - name: "STORAGE | Create storage subdirectories"
+      become: false
+      file:
+        path: "{{ actual_user_home }}/coin2/temp/{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ actual_user }}"
+        group: "{{ actual_user }}"
+      loop: "{{ storage_subdirs }}"
+      tags: [storage]
+      when: install_storage | bool
+
+    - name: "STORAGE | Display status"
+      debug:
+        msg: |
+          ✓ Storage directories created:
+            - {{ actual_user_home }}/coin2/
+            - {{ actual_user_home }}/coin2/temp/
+      tags: [storage]
+      when: install_storage | bool
     
   post_tasks:
     # =========================================================================
@@ -620,6 +673,12 @@
           ignore_errors: true
           changed_when: false
           when: install_uv | bool
+
+        - name: "VERIFY | Check storage directories"
+          become: false
+          stat:
+            path: "{{ actual_user_home }}/coin2/temp"
+          register: verify_storage
       tags: [verify, always]
     
     - name: "SUMMARY | Display final summary"
