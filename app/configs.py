@@ -7,4 +7,8 @@ KAFKA_FETCH_TOPICS = [
     "ws-okx"
 ]
 
+KAFKA_ETL_TOPICS = [
+    "watch-raw"
+]
+
 INSERTER_KAFKA_GROUP_ID = "inserter-consumer"
