@@ -23,9 +23,9 @@ from app.consts import ASYNCIO_SLEEP, REST_TIMEOUT
 from app.fetch.kafka import send_to_kafka
 
 
-HTTP_URI = "https://api-pub.bitfinex.com/v2"  # Use OS env var
-WS_URI = "wss://api-pub.bitfinex.com/ws/2"  # Use OS env var
-KAFKA_TOPIC = "ws-bitfinex"  # Use OS env var
+HTTP_URI = "https://api-pub.bitfinex.com/v2"
+WS_URI = "wss://api-pub.bitfinex.com/ws/2"
+KAFKA_TOPIC = "ws-bitfinex"
 BACKOFF_TIME = 3.0
 SLEEP_BETWEEN_CONNECTIONS = 3  # Each minute is limited to 20 connections
 MAX_CHANNELS_PER_CONNECTION = 25

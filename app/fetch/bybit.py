@@ -25,7 +25,7 @@ from app.fetch.kafka import send_to_kafka
 
 HTTP_URI = "https://api.bybit.com/v5"
 WS_URI = "wss://stream.bybit.com/v5/public/spot"
-KAFKA_TOPIC = "ws-bybit"  # Use OS env var
+KAFKA_TOPIC = "ws-bybit"
 BACKOFF_TIME = 3.0
 SLEEP_BETWEEN_CONNECTIONS = 0.6  # Every 5 mins is limited to 500 connections
 MAX_ARGS_PER_REQUEST = 10  # Each request is limited to 10 args

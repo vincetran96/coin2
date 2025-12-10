@@ -27,7 +27,7 @@ from app.fetch.kafka import send_to_kafka
 
 HTTP_URI = "https://api.binance.com/api/v3"
 WS_URI = "wss://stream.binance.com:443/ws"
-KAFKA_TOPIC = "ws-binance"  # Use OS env var
+KAFKA_TOPIC = "ws-binance"
 BACKOFF_TIME = 3.0
 SLEEP_BETWEEN_CONNECTIONS = 0.6  # Every 5 mins is limited to 500 connections
 MAX_SYMBOLS_PER_CONNECTION = 200  # Manually adjusted

@@ -25,7 +25,7 @@ from app.fetch.kafka import send_to_kafka
 
 HTTP_URI = "https://www.okx.com/api/v5"
 WS_URI = "wss://wsaws.okx.com:8443/ws/v5/business"
-KAFKA_TOPIC = "ws-okx"  # Use OS env var
+KAFKA_TOPIC = "ws-okx"
 BACKOFF_TIME = 3.0
 SLEEP_BETWEEN_CONNECTIONS = 1/3  # Each second is limited to 3 connections
 MAX_SYMBOLS_PER_CONNECTION = 200  # Manually adjusted
