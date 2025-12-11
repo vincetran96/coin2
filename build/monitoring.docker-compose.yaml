@@ -3,7 +3,7 @@ services:
     image: prom/prometheus:v2.47.2
     restart: unless-stopped
     ports:
-      - "19090:9090"
+      - "59090:9090"
     volumes:
       - ./monitoring/.mnt/prometheus:/etc/prometheus
 
@@ -11,7 +11,7 @@ services:
     image: prom/alertmanager:v0.27.0
     restart: unless-stopped
     ports:
-      - "19093:9093"
+      - "59093:9093"
 
   grafana:
     image: grafana/grafana:10.4.5
