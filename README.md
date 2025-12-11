@@ -6,13 +6,31 @@
 # Architecture
 TODO: Add this.
 
+
 # Deployment steps
 ## Environment
 Rename the `.env.example` file to `.env` and change the values as appropriate.
+
+## Infra
+```bash
+chmod +x scripts/data-infra.sh
+./scripts/data-infra.sh
+```
+
+Docker (optional if not run data-infra.sh)
+```bash
+docker network create -d bridge data-infra
+```
 ## Kafka
 ### Setup cluster
 ```bash
+# This build uses cache
+chmod +x build/kafka-connect.build.sh
+./build/kafka-connect.build.sh vincetran96/kafka-connect:test
+
 docker compose -f build/kafka.docker-compose.yaml up --force-recreate -d
+chmod +x scripts/kafka-init.sh
+./scripts/kafka-init.sh
 ```
 ### Monitoring with Prometheus and Grafana
 #### Prometheus and Grafana resourcess
@@ -47,6 +65,10 @@ docker compose -f build/monitoring.docker-compose.yaml up --force-recreate -d
 - Check the following endpoint for Prometheus datasources' status: `http://TAILSCALE_IP:19090/targets`
   - If the Prometheus data source for Grafana doesn't exist, manually add this: endpoint: `http://prometheus:9090`
 - Import dashboards into Grafana from [here](./assets/monitoring/grafana/dashboards/).
+## Storage layer
+```bash
+docker compose -f build/minio.docker-compose.yaml up --force-recreate -d
+```
 ## Database
 The database can be ClickHouse, etc. To get started, see [DATABASE](docs/DATABASE.md).
 - ClickHouse quick commands:
@@ -59,8 +81,10 @@ The database can be ClickHouse, etc. To get started, see [DATABASE](docs/DATABAS
   ```
 ## Build Coin app Docker image
 ```bash
+# This build does NOT use cache
 chmod +x build/coin2.build.sh
 ./build/coin2.build.sh vincetran96/coin2:test
+
 chmod +x build/coin2.local-k8s-repo.sh
 ./build/coin2.local-k8s-repo.sh vincetran96/coin2:test
 ```
@@ -79,6 +103,12 @@ kubectl apply \
     -f k8s/coin2-fetch.yaml \
     -f k8s/coin2-etl.yaml \
     -f k8s/coin2-volume.yaml
+```
+
+
+# Summary of exposed ports
+```
+
 ```
 
 

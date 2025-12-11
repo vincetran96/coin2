@@ -1,0 +1,38 @@
+{
+  "name": "iceberg-binance-ohlcv-brz",
+  "config": {
+    "connector.class": "org.apache.iceberg.connect.IcebergSinkConnector",
+    "tasks.max": "2",
+    "topics": "ws-binance",
+    
+    "iceberg.tables": "binance.ohlcv_brz",
+    "iceberg.tables.auto-create-enabled": "true",
+    "iceberg.tables.evolve-schema-enabled": "true",
+    "iceberg.tables.schema-force-optional": "true",
+    
+    "iceberg.catalog": "hadoop-catalog",
+    "iceberg.catalog.type": "hadoop",
+    "iceberg.catalog.warehouse": "s3a://warehouse",
+    "iceberg.catalog.io-impl": "org.apache.iceberg.aws.s3.S3FileIO",
+    
+    "iceberg.catalog.hadoop.fs.s3a.access.key": "admin",
+    "iceberg.catalog.hadoop.fs.s3a.secret.key": "password",
+    "iceberg.catalog.hadoop.fs.s3a.endpoint": "http://minio:9000",
+    "iceberg.catalog.hadoop.fs.s3a.path.style.access": "true",
+    "iceberg.catalog.hadoop.fs.s3a.connection.ssl.enabled": "false",
+    "iceberg.catalog.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
+
+    "iceberg.catalog.s3a.endpoint": "http://minio:9000",
+    "iceberg.catalog.s3a.path-style-access": "true",
+    "iceberg.catalog.s3a.access-key-id": "admin",
+    "iceberg.catalog.s3a.secret-access-key": "password",
+    
+    "iceberg.control.topic": "ctrl-iceberg-ws-binance",
+    "iceberg.control.group-id": "cg-ctrl-iceberg-ws-binance",
+    
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false"
+  }
+}

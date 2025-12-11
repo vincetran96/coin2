@@ -3,5 +3,5 @@
 kubectl delete \
     -f k8s/coin2-heartbeat.yaml \
     -f k8s/coin2-fetch.yaml \
-    -f k8s/coin2-insert.yaml \
-    -f k8s/coin2-pvc.yaml
+    -f k8s/coin2-etl.yaml \
+    -f k8s/coin2-volume.yaml

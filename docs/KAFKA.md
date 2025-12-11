@@ -58,6 +58,9 @@ done
 
 # Kafka Connect
 ```bash
+# Show information about a connector
+curl -s http://localhost:58083/connectors/iceberg-binance-ohlcv-brz/status | jq
+
 # Delete a connector config
 curl -X DELETE http://localhost:58083/connectors/iceberg-binance-ohlcv-brz
 
