@@ -279,6 +279,14 @@
       when: 
         - install_docker | bool
         - docker_version.stdout is defined
+
+    - name: "DOCKER | Ensure data-infra bridge network exists"
+      community.docker.docker_network:
+        name: data-infra
+        driver: bridge
+        state: present
+      tags: [docker]
+      when: install_docker | bool
     
     - name: "DOCKER | Display post-install note"
       debug:
