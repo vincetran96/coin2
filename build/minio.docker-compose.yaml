@@ -11,9 +11,10 @@ services:
     networks:
       - data-infra
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password
-    command: server /data --console-address ":9001"
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_DOMAIN: minio
+    command: ["server", "/data", "--console-address", ":9001"]
     volumes:
       - minio-data:/data
     healthcheck:
@@ -30,14 +31,47 @@ services:
       - minio
     networks:
       - data-infra
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_DOMAIN: minio
+      AWS_REGION: us-east-1
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      /usr/bin/mc alias set myminio http://minio:9000 admin password;
+      until (/usr/bin/mc config host add myminio http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}) do echo '...waiting...' && sleep 1; done;
       /usr/bin/mc mb myminio/warehouse;
       /usr/bin/mc anonymous set upload myminio/warehouse;
       exit 0;
       "
+
+      tail -f /dev/null
+      "
+
+  # Iceberg REST server
+  iceberg-rest:
+    image: tabulario/iceberg-rest:1.6.0
+    container_name: iceberg-rest
+    hostname: iceberg-rest
+    restart: unless-stopped
+    depends_on:
+      - minio
+    ports:
+      - "58181:8181"
+    networks:
+      - data-infra
+    environment:
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      CATALOG_S3_PATH_STYLE_ACCESS: "true"
+      CATALOG_S3_ACCESS__KEY__ID: ${MINIO_ROOT_USER}
+      CATALOG_S3_SECRET__ACCESS__KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_REGION: us-east-1
+      AWS_S3_FORCE_PATH_STYLE: "true"
 
 # Use external Docker bridge network
 networks:

@@ -129,6 +129,7 @@ services:
     #   - ./jmx-exporter:/usr/share/jmx_exporter/
 
   kafka-connect:
+    # Use a custom image for now
     # image: confluentinc/cp-kafka-connect:7.6.0
     image: vincetran96/kafka-connect:test
     container_name: kafka-connect
@@ -158,10 +159,11 @@ services:
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
       # AWS SDK configuration for MinIO (S3-compatible); Must be the same as ones set in MinIO docker compose
-      CONNECT_AWS_ACCESS_KEY_ID: admin
-      CONNECT_AWS_SECRET_ACCESS_KEY: password
-      AWS_ACCESS_KEY_ID: admin
-      AWS_SECRET_ACCESS_KEY: password
+      CONNECT_AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CONNECT_AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_REGION: us-east-1
     # Disable volume mounting for now
     # volumes:
     #   - ./kafka/.mnt/kafka_connect/components:/usr/share/confluent-hub-components
