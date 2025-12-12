@@ -23,6 +23,7 @@ docker network create -d bridge data-infra
 ```
 ## Kafka
 ### Setup cluster
+Note that the Kafka component depends on the storage component (enabling Kafka Connect to write to storage).
 ```bash
 # This build uses cache
 chmod +x build/kafka-connect.build.sh
