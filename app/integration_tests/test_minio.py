@@ -5,11 +5,11 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 
 
-# MinIO config
 MINIO_ENDPOINT = "http://localhost:59000"  # External port
 ACCESS_KEY = "admin"
 SECRET_KEY = "password"
 BUCKET = "warehouse"
+
 
 # Create S3 client
 s3 = boto3.client(
