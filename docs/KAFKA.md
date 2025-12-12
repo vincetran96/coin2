@@ -1,6 +1,7 @@
 **This doc contains details about database components of this repo.**
 
 # Kafka commands
+Make sure we have a binary copy of Kafka executables.
 ```bash
 # List topics
 ./bin/kafka/bin/kafka-topics.sh \
