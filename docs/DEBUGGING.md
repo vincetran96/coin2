@@ -13,6 +13,9 @@ docker compose -f build/kafka.docker-compose.yaml down kafka-connect
 
 # Stop a service with its volume
 docker compose -f build/kafka.docker-compose.yaml down kafka-connect -v
+
+# List environment variables of a container
+docker exec -it kafka-connect env
 ```
 
 

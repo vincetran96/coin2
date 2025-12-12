@@ -95,7 +95,7 @@ kubectl create ns coin2
 kubectl create -f k8s/coin2-configmap.yaml
 ```
 ### Update some configs
-Update appropriate values in `k8s/coin2-volume.example.yaml` (remove ".example" part).
+Update appropriate values in `k8s/coin2-volume.example.yaml` and rename the file.
 ### Start the app
 ```bash
 kubectl apply \
