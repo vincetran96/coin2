@@ -17,10 +17,10 @@ services:
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "(command -v curl >/dev/null 2>&1 && curl -fsS http://localhost:9000/minio/health/live) || (command -v wget >/dev/null 2>&1 && wget -qO- http://localhost:9000/minio/health/live) || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
-      retries: 5
+      retries: 3
 
   # Create MinIO bucket for Iceberg
   minio-setup:
@@ -31,23 +31,13 @@ services:
     networks:
       - data-infra
     entrypoint: >
-      /bin/sh -eux -c '
-      # retry until minio is reachable and alias registered
-      for i in $(seq 1 12); do
-        if mc alias set myminio http://minio:9000 admin password; then
-          break
-        fi
-        sleep 2
-      done
-
-      # create bucket if missing (idempotent)
-      mc ls myminio/warehouse >/dev/null 2>&1 || mc mb myminio/warehouse
-
-      # set read/write policy (correct command)
-      mc policy set download myminio/warehouse || true
-
-      exit 0
-      '
+      /bin/sh -c "
+      sleep 5;
+      /usr/bin/mc alias set myminio http://minio:9000 admin password;
+      /usr/bin/mc mb myminio/warehouse;
+      /usr/bin/mc anonymous set upload myminio/warehouse;
+      exit 0;
+      "
 
 # Use external Docker bridge network
 networks:
