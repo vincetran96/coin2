@@ -99,7 +99,5 @@ def send_to_kafka(producer: Producer, topic: str, data_list: List[dict], data_ke
             value=json.dumps(data).encode("utf-8"),
             key=data[data_key].encode("utf-8") if data_key is not None else None
         )
-        print(json.dumps(data).encode("utf-8"))
-        print(data[data_key].encode("utf-8"))
     producer.flush()
     logging.info(f"Finished sending {len(data_list)} records to Kafka")
