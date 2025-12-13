@@ -1,8 +1,10 @@
 #! /usr/bin/env bash
 set -eo pipefail
 
+# Get env vars
+source ./build/.env
+
 # Create exchange schemas in schema registry
-SCHEMA_REGISTRY="http://localhost:58081"
 SCHEMAS_DIR="${1:-./assets/kafka/schemas}"
 
 echo "Registering schemas from: $SCHEMAS_DIR"
@@ -19,7 +21,7 @@ for schema_file in "$SCHEMAS_DIR"/*.json; do
     payload=$(jq -R -s '{schema: .}' < "$schema_file")
 
     tmp=$(mktemp)
-    http_code=$(curl -s -o "$tmp" -w "%{http_code}" -X POST "$SCHEMA_REGISTRY/subjects/$subject/versions" \
+    http_code=$(curl -s -o "$tmp" -w "%{http_code}" -X POST "$KAFKA_SCHEMA_REGISTRY_ENDPOINT/subjects/$subject/versions" \
         -H "Content-Type: application/vnd.schemaregistry.v1+json" \
         -d "$payload" || true)
     body=$(cat "$tmp"); rm -f "$tmp"
@@ -42,7 +44,6 @@ echo "All schemas registered!"
 
 
 # Deploy Iceberg JSON config for each exchange
-KAFKA_CONNECT_ENDPOINT="http://localhost:58083"
 CONFIGS_DIR="${2:-./assets/kafka/kafka_connect/iceberg}"
 
 echo "Deploying Iceberg connectors from: $CONFIGS_DIR"
