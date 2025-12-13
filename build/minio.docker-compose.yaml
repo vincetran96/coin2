@@ -46,9 +46,6 @@ services:
       exit 0;
       "
 
-      tail -f /dev/null
-      "
-
   # Iceberg REST server
   iceberg-rest:
     image: tabulario/iceberg-rest:1.6.0
