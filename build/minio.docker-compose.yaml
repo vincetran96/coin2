@@ -24,6 +24,7 @@ services:
       retries: 3
 
   # Create MinIO bucket for Iceberg
+  # If sleep 5 doesn't work, may have to try using wait-for
   minio-setup:
     image: minio/mc:latest
     container_name: minio-setup
@@ -39,7 +40,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      until (/usr/bin/mc config host add myminio http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
       /usr/bin/mc mb myminio/warehouse;
       /usr/bin/mc anonymous set upload myminio/warehouse;
       exit 0;
