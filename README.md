@@ -67,6 +67,8 @@ docker compose -f build/monitoring.docker-compose.yaml up --force-recreate -d
   - If the Prometheus data source for Grafana doesn't exist, manually add this: endpoint: `http://prometheus:9090`
 - Import dashboards into Grafana from [here](./assets/monitoring/grafana/dashboards/).
 ## Storage layer
+### Resources
+- https://blog.min.io/modern-data-architectures-with-iceberg-and-tabular/
 ```bash
 docker compose -f build/minio.docker-compose.yaml up --force-recreate -d
 ```
