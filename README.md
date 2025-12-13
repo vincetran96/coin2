@@ -110,8 +110,23 @@ kubectl apply \
 
 
 # Summary of exposed ports
+## Kafka
 ```
-
+9094, 9095, 9096: Kafka brokers
+9200: KMinion
+60094: Kafka UI
+58081, 59203: Kafka schema registry
+58083: Kafka Connect
+```
+## Monitoring
+```
+59090, 59093: Prometheus
+63000: Grafana
+```
+## Storage
+```
+59000, 59001: MinIO
+58181: Iceberg REST server
 ```
 
 
