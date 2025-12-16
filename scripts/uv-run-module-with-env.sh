@@ -7,4 +7,4 @@ set -a
 source ./build/.env
 set +a
 
-uv run -m $MODULE
+uv run -m $MODULE 2>&1  # Redirect stderr to stdout
