@@ -1,5 +1,5 @@
-from pyiceberg.schema import Schema
 import pyiceberg.types as types
+from pyiceberg.schema import Schema
 
 from models.base_model import BaseModel
 

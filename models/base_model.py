@@ -2,7 +2,7 @@
 """
 import logging
 
-from pyiceberg.catalog import load_catalog
+from pyiceberg.catalog import Table, load_catalog
 from pyiceberg.schema import Schema
 from pyiceberg.partitioning import PartitionSpec
 from pyiceberg.table.sorting import SortOrder
@@ -28,6 +28,7 @@ class BaseModel:
         self.tbl_schema: Schema | None = None
 
         self.catalog = get_catalog()
+        self.tbl_object: Table | None = None
 
     @property
     def tbl_identifier(self) -> str:
@@ -37,7 +38,7 @@ class BaseModel:
         """Create the table if it doesn't exist
         """
         try:
-            self.catalog.create_table_if_not_exists(
+            self.tbl_object = self.catalog.create_table_if_not_exists(
                 identifier=self.tbl_identifier,
                 schema=self.tbl_schema,
             )
