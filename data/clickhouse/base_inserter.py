@@ -16,10 +16,10 @@ class BaseInserter:
         """Connect to ClickHouse db and assign a connection to its attr
         """
         self._con = clickhouse_connection(
-            host=Config.os_get(key=OsVariable.CLICKHOUSE_HOST),
-            port=Config.os_get(key=OsVariable.CLICKHOUSE_NATIVE_PORT),
-            username=Config.os_get(key=OsVariable.APP_INSERTER_USER),
-            password=Config.os_get(key=OsVariable.APP_INSERTER_PASSWORD)
+            host=Config.os_get(key=OsVariable.CLICKHOUSE_HOST.value),
+            port=Config.os_get(key=OsVariable.CLICKHOUSE_NATIVE_PORT.value),
+            username=Config.os_get(key=OsVariable.APP_INSERTER_USER.value),
+            password=Config.os_get(key=OsVariable.APP_INSERTER_PASSWORD.value)
         )
 
     def disconnect(self):

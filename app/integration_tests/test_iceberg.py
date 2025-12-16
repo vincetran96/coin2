@@ -2,11 +2,14 @@
 """
 from pyiceberg.catalog import load_catalog
 
+from common.configs import Config, OsVariable
+
+
 catalog = load_catalog(
     "rest",
-    uri="http://localhost:58181",
+    uri=Config.os_get(OsVariable.CATALOG_ENDPOINT.value),
     **{
-        "s3.endpoint": "http://localhost:59000",
+        "s3.endpoint": Config.os_get(OsVariable.MINIO_ENDPOINT.value),
         "s3.access-key-id": "admin",
         "s3.secret-access-key": "password",
         "s3.path-style-access": "true"

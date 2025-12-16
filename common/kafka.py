@@ -26,7 +26,7 @@ def create_producer() -> Producer:
     """Create a Kafka producer
     """
     return Producer({
-        "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER)
+        "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER.value)
     })
 
 
@@ -39,7 +39,7 @@ def create_consumer(
     """
     return closing(
         Consumer({
-            "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER),
+            "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER.value),
             "group.id": group_id,
             "enable.auto.commit": auto_commit,
             "auto.offset.reset": auto_offset_reset
@@ -51,7 +51,7 @@ def create_admin_client():
     """Create an admin client
     """
     return AdminClient({
-        "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER)
+        "bootstrap.servers": Config.os_get(OsVariable.KAFKA_BOOTSTRAP_SERVER.value)
     })
 
 
