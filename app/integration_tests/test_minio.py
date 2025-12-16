@@ -1,13 +1,15 @@
 """Script to test MinIO/Storage component
 """
 import boto3
-from botocore.client import Config
+from botocore.client import Config as BotoConfig
 from botocore.exceptions import ClientError
 
+from common.configs import Config, OsVariable
 
-MINIO_ENDPOINT = "http://localhost:59000"  # External port
-ACCESS_KEY = "admin"
-SECRET_KEY = "password"
+
+MINIO_ENDPOINT = Config.os_get(OsVariable.MINIO_ENDPOINT.value)  # External port
+ACCESS_KEY = Config.os_get(OsVariable.MINIO_ROOT_USER.value) or "admin"
+SECRET_KEY = Config.os_get(OsVariable.MINIO_ROOT_PASSWORD.value) or "password"
 BUCKET = "warehouse"
 
 
@@ -17,7 +19,7 @@ s3 = boto3.client(
     endpoint_url=MINIO_ENDPOINT,
     aws_access_key_id=ACCESS_KEY,
     aws_secret_access_key=SECRET_KEY,
-    config=Config(signature_version='s3v4'),
+    config=BotoConfig(signature_version='s3v4'),
     region_name='us-east-1'
 )
 

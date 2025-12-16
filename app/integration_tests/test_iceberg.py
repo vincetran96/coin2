@@ -2,24 +2,17 @@
 """
 from pyiceberg.catalog import load_catalog
 
+from common.catalog import get_catalog
 from common.configs import Config, OsVariable
 
 
-catalog = load_catalog(
-    "rest",
-    uri=Config.os_get(OsVariable.CATALOG_ENDPOINT.value),
-    **{
-        "s3.endpoint": Config.os_get(OsVariable.MINIO_ENDPOINT.value),
-        "s3.access-key-id": "admin",
-        "s3.secret-access-key": "password",
-        "s3.path-style-access": "true"
-    }
-)
+catalog = get_catalog()
+TABLE_IDENTIFIER = "binance.ohlcv_brz"
 
 try:
-    table = catalog.load_table("binance.ohlcv_brz")
+    table = catalog.load_table(TABLE_IDENTIFIER)
     
-    print("Table exists: binance.ohlcv_brz")
+    print(f"Table exists: {TABLE_IDENTIFIER}")
     print(f"Schema: {table.schema()}")
     
     # Get row count
