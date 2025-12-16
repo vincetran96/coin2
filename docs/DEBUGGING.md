@@ -29,4 +29,7 @@ KAFKA_BOOTSTRAP_SERVER=TAILSCALE_IP:9094 uv run -m app.etl.save_raw_cli -t ws-bi
 
 # Execute shell inside pod
 kubectl exec -n coin2 -it coin2-fetch -- sh
+
+# Execute python module with env variables
+./scripts/uv-run-module-with-env.sh app.integration_tests.test_iceberg
 ```
