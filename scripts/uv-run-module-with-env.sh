@@ -7,4 +7,6 @@ set -a
 source ./build/.env
 set +a
 
-uv run -m $MODULE 2>&1  # Redirect stderr to stdout
+# We pass all arguments from position 2 into uv run
+# Also, redirect stderr to stdout
+uv run -m $MODULE "${@:2}" 2>&1  
