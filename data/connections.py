@@ -8,7 +8,7 @@ def clickhouse_connection(
     port: int,
     username: str,
     password: str,
-):
+) -> Client:
     """
     Create a connection to ClickHouse
     
