@@ -17,7 +17,7 @@ import requests
 import websockets
 from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
-from common.consts import KAFKA_PRODUCE_BATCHSIZE, LOG_FORMAT
+from common.consts import KAFKA_PRODUCE_BATCHSIZE, KAFKA_PRODUCE_TIMEOUT, LOG_FORMAT
 from app.consts import ASYNCIO_SLEEP, REST_TIMEOUT
 from app.kafka import KafkaAccSender
 
@@ -67,7 +67,10 @@ async def _subscribe(symbols: List[str], con_id: int) -> NoReturn:
     """
     backoff_delay = BACKOFF_TIME
     kafka_acc_sender = KafkaAccSender(
-        topic=KAFKA_TOPIC, batchsize=KAFKA_PRODUCE_BATCHSIZE, send_timeout=KAFKA_PRODUCE_TIMEOUT, data_key="symbol"
+        topic=KAFKA_TOPIC,
+        batchsize=KAFKA_PRODUCE_BATCHSIZE,
+        send_timeout=KAFKA_PRODUCE_TIMEOUT,
+        data_key="symbol"
     )
 
     async for con in websockets.connect(uri=WS_URI):
