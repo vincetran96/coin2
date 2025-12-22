@@ -22,10 +22,13 @@ docker exec -it kafka-connect env
 # Coin app
 ```bash
 # Fetch from binance
-KAFKA_BOOTSTRAP_SERVER=TAILSCALE_IP:9094 uv run -m app.fetch.binance
+./scripts/uv-run-module-with-env.sh app.fetch.binance
 
 # Save raw data
-KAFKA_BOOTSTRAP_SERVER=TAILSCALE_IP:9094 uv run -m app.etl.save_raw_cli -t ws-binance --output_dir temp
+./scripts/uv-run-module-with-env.sh app.etl.save_raw_cli -t ws-binance --output_dir temp
+
+# Consume from Kafka to Bronze
+./scripts/uv-run-module-with-env.sh app.etl.ohlcv.binance.raw_to_brz
 
 # Execute shell inside pod
 kubectl exec -n coin2 -it coin2-fetch -- sh
