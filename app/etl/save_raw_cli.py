@@ -16,7 +16,7 @@ from app.configs import KAFKA_FETCH_TOPICS, INSERTER_KAFKA_GROUP_ID
 from app.etl.save_raw import consume_from_kafka
 from common.consts import KAFKA_CONSUME_BATCHSIZE, LOG_FORMAT
 from common.kafka import create_consumer
-from data.clickhouse.base_inserter import BaseInserter
+from data.clickhouse.base_inserter import ClickHouseBaseInserter
 
 
 def _parse_args() -> argparse.Namespace:

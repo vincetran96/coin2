@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, NoReturn
 
 from common.kafka import create_consumer
-from data.clickhouse.base_inserter import BaseInserter
+from data.clickhouse.base_inserter import ClickHouseBaseInserter
 
 
 def _make_unique_filename(
