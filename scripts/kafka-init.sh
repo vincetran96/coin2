@@ -44,7 +44,7 @@ echo "All schemas registered!"
 
 
 # Deploy Iceberg JSON config for each exchange
-CONFIGS_DIR="${2:-./assets/kafka/kafka_connect/iceberg}"
+CONFIGS_DIR="${2:-./app/etl/ohlcv/binance/brz/kafka_connect}"
 
 echo "Deploying Iceberg connectors from: $CONFIGS_DIR"
 
