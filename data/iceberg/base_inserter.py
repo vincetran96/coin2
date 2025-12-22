@@ -3,15 +3,16 @@
 import logging
 from typing import Any, Dict, List, Literal
 
-from common.catalog import get_catalog, create_namespace_if_not_exists
-from models.base_model import BaseModel
+from common.catalog import get_catalog
+from data.iceberg.utils import to_arrow_table
+from data.interfaces import DataInserter
 
 
-class BaseInserter:
+class IcebergBaseInserter(DataInserter):
     """Base inserter to Iceberg that can be used as a context manager
     """
     def __init__(self, mode: Literal["append", "overwrite"] = "append"):
-        self.mode = mode
+        super().__init__(mode=mode)
 
         # Private
         self._con = None
@@ -26,20 +27,24 @@ class BaseInserter:
     #     """
     #     self._con.disconnect()
 
-    def insert(self, tbl_model: BaseModel, data: Any):
-        """Insert data into Iceberg table
+    def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs):
+        """Private method
+
+        Insert data into Iceberg table
 
         Args:
-            tbl_model (BaseModel): Model representing the target table
-            data (Any):
+            tbl_name (str):
+            data (List[Dict]):
+            field_names (List[str]):
         """
-        tbl_object = self._catalog.load_table(tbl_model.tbl_identifier)
+        tbl_object = self._catalog.load_table(tbl_name)
+        data_py_tbl = to_arrow_table(data=data, fields=field_names)
         
         match self.mode:
             case "append":
-                tbl_object.append(df=data)
+                tbl_object.append(df=data_py_tbl)
             case "overwrite":
-                tbl_object.overwrite(df=data)
+                tbl_object.overwrite(df=data_py_tbl)
             case _:
                 logging.info("No valid mode provided")
 

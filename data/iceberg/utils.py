@@ -6,7 +6,7 @@ import pyarrow as pa
 
 
 def to_arrow_table(
-    data: List[Dict[str, Any]], 
+    data: List[Dict[str, Any]],
     fields: List[str]
 ) -> pa.Table:
     """

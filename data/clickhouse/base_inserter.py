@@ -2,15 +2,21 @@
 """
 from typing import Dict, List
 
+from clickhouse_driver import Client
+
 from common.configs import Config, OsVariable
 from data.connections import clickhouse_connection
+from data.interfaces import DataInserter
 
 
-class BaseInserter:
+class ClickHouseBaseInserter(DataInserter):
     """Base inserter to ClickHouse that can be used as a context manager
     """
     def __init__(self):
-        self._con = None
+        super().__init__()
+
+        # Private
+        self._con: Client | None = None
 
     def connect(self):
         """Connect to ClickHouse db and assign a connection to its attr
@@ -27,16 +33,18 @@ class BaseInserter:
         """
         self._con.disconnect()
 
-    def insert(self, table_name: str, data: List[Dict], table_fields: List[str]):
-        """Insert data into ClickHouse table
+    def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs):
+        """Private method
+        
+        Insert data into ClickHouse table
 
         Args:
-            table_name (str): The name of the ClickHouse table to insert data into
+            tbl_name (str): The name of the ClickHouse table to insert data into
             data (List[Dict]): The data to be inserted into ClickHouse
-            table_fields (List[str]): The fields of the ClickHouse table to insert data into
+            field_names (List[str]): The fields of the ClickHouse table to insert data into
         """
         self._con.execute(
-            f"INSERT INTO {table_name} ({', '.join(table_fields)}) VALUES ",
+            f"INSERT INTO {tbl_name} ({', '.join(field_names)}) VALUES ",
             data,
         )
 
