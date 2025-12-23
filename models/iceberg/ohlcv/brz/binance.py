@@ -1,6 +1,7 @@
 import pyiceberg.types as types
 from pyiceberg.schema import Schema
 
+from models.consts import CHG_TS_COL
 from models.iceberg.base_model import BaseModel
 
 
@@ -24,4 +25,7 @@ class BinanceOHLCVBrz(BaseModel):
             types.NestedField(field_id=6, name="low_", field_type=types.DoubleType(), required=False),
             types.NestedField(field_id=7, name="close_", field_type=types.DoubleType(), required=False),
             types.NestedField(field_id=8, name="volume_", field_type=types.DoubleType(), required=False),
+            
+            # Audit columns
+            types.NestedField(field_id=9, name=CHG_TS_COL, field_type=types.TimestamptzType(), required=True),
         )

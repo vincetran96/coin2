@@ -38,8 +38,7 @@ class DataInserter(ABC):
 
     @abstractmethod
     def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs):
-        """
-        Private method to be implemented
+        """Private method to be implemented
 
         Args:
             **kwargs: Implementation-specific parameters
