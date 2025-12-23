@@ -1,7 +1,7 @@
 import pyiceberg.types as types
 from pyiceberg.schema import Schema
 
-from models.base_model import BaseModel
+from models.iceberg.base_model import BaseModel
 
 
 NAMESPACE = "binance"
@@ -9,6 +9,9 @@ NAMESPACE = "binance"
 
 # TODO: Parsing using Kafka Connect may force us to not use `required`
 class BinanceOHLCVBrz(BaseModel):
+    """
+    Model representing the Binance OHLCV Bronze table.
+    """
     def __init__(self) -> None:
         super().__init__(namespace=NAMESPACE, table_name="ohlcv_brz")
 

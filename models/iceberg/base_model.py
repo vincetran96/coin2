@@ -2,7 +2,7 @@
 """
 import logging
 
-from pyiceberg.catalog import Table, load_catalog
+from pyiceberg.table import Table
 from pyiceberg.schema import Schema
 from pyiceberg.partitioning import PartitionSpec
 from pyiceberg.table.sorting import SortOrder

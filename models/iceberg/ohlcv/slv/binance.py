@@ -1,13 +1,16 @@
 import pyiceberg.types as types
 from pyiceberg.schema import Schema
 
-from models.base_model import BaseModel
+from models.iceberg.base_model import BaseModel
 
 
 NAMESPACE = "binance"
 
 
 class BinanceOHLCVSlv(BaseModel):
+    """
+    Model representing the Binance OHLCV Silver table.
+    """
     def __init__(self) -> None:
         super().__init__(namespace=NAMESPACE, table_name="ohlcv_slv")
 

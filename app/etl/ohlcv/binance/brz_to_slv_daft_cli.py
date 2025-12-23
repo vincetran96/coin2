@@ -9,6 +9,7 @@ from daft import col, DataType
 from common.consts import LOG_FORMAT
 from common.catalog import get_catalog, create_namespace_if_not_exists
 from data.iceberg.consts import BINANCE_NAMESPACE
+from models.iceberg.ohlcv.brz.binance import BinanceOHLCVBrz
 from models.iceberg.ohlcv.slv.binance import BinanceOHLCVSlv
 
 
@@ -16,13 +17,12 @@ if __name__ == "__main__":
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
 
     create_namespace_if_not_exists(BINANCE_NAMESPACE)
+    brz_tbl_model = BinanceOHLCVBrz()
     slv_tbl_model = BinanceOHLCVSlv()
     slv_tbl_model.create_table_if_not_exists()
 
-    # Bronze
-    # TODO: Implement Bronze table model if needed
     catalog = get_catalog()
-    brz_tbl_object = catalog.load_table(f"{BINANCE_NAMESPACE}.ohlcv_brz")
+    brz_tbl_object = brz_tbl_model.tbl_object
     brz_df = daft.read_iceberg(brz_tbl_object)
     logging.info(f"Column names in Bronze: {brz_df.column_names}")
 
