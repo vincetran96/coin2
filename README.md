@@ -22,6 +22,8 @@ Docker (optional if not run data-infra.sh)
 docker network create -d bridge data-infra
 ```
 ## Kafka
+### Download Kafka binary
+Download the binary and save to `./bin/kafka`. We expect to have files like so: `./bin/kafka/bin/kafka-consumer-groups.sh`.
 ### Setup cluster
 Note that the Kafka component depends on the storage component (enabling Kafka Connect to write to storage).
 ```bash
