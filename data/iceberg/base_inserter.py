@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Literal
 import pyarrow as pa
 
 from common.catalog import get_catalog
-from data.iceberg.utils import to_arrow_table
+from data.iceberg.utils import to_arrow_table, add_audit_columns
 from data.interfaces import DataInserter
 from models.consts import CHG_TS_COL
 
@@ -32,20 +32,6 @@ class IcebergBaseInserter(DataInserter):
     #     """
     #     self._con.disconnect()
 
-    def _add_audit_columns(self, pa_tbl: pa.Table):
-        """Private method
-        
-        Add audit columns to the PyArrow table
-
-        The following columns are added:
-          - _change_tstamp: timestamp of the change
-        """
-        # _change_tstamp
-        current_time = datetime.now(timezone.utc)
-        timestamp_array = pa.array([current_time] * pa_tbl.num_rows, type=pa.timestamp('us', tz='UTC'))
-
-        return pa_tbl.append_column(CHG_TS_COL, timestamp_array)
-
     def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs):
         """Private method
 
@@ -62,7 +48,7 @@ class IcebergBaseInserter(DataInserter):
         tbl_columns = [col.name for col in tbl_schema.columns]
 
         data_pa_tbl = to_arrow_table(data=data, fields=field_names)
-        data_pa_tbl = self._add_audit_columns(data_pa_tbl)
+        data_pa_tbl = add_audit_columns(data_pa_tbl)
 
         # We attempt to convert the data into target's schema
         data_pa_tbl = data_pa_tbl.cast(
