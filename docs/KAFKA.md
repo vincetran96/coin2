@@ -34,10 +34,14 @@ Make sure we have a binary copy of Kafka executables.
     --topic TOPIC
 
 # Describe offsets
-./bin/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9094 --group inserter-consumer --describe --offsets
+./bin/kafka/bin/kafka-consumer-groups.sh \
+    --bootstrap-server localhost:9094 \
+    --group inserter-consumer --describe --offsets
 
 # Reset offset
-./bin/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9094 --group inserter-consumer --reset-offsets --to-earliest --all-topics --execute
+./bin/kafka/bin/kafka-consumer-groups.sh \
+    --bootstrap-server localhost:9094 \
+    --group inserter-consumer --reset-offsets --to-earliest --all-topics --execute
 ```
 
 
