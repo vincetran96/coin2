@@ -16,13 +16,25 @@ AVAILABLE_INSERTER_TYPES = [
 
 
 class DataInserter(ABC):
-    """Abstract base class for inserting data
+    """
+    Abstract base class for inserting data, which can be used as a context manager.
+
+    One use case of this is to run inside a long-running job that consumes data from Kafka
+    and inserts to databases. This inserter should ideally be able to automatically handle
+    reconnection after a certain number of inserts/period of time to avoid stale connections.
+    However, the functionality has not been implemented yet.
     """
     def __init__(
         self,
         mode: Literal["append", "overwrite"] = "append"
     ):
         self.mode = mode
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        pass
 
     @abstractmethod
     def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs):

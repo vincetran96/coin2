@@ -7,7 +7,8 @@ import pyarrow as pa
 
 def to_arrow_table(
     data: List[Dict[str, Any]],
-    fields: List[str]
+    fields: List[str],
+    schema: pa.Schema | None = None
 ) -> pa.Table:
     """
     Convert list of dicts to PyArrow Table with field selection
@@ -26,4 +27,6 @@ def to_arrow_table(
         {field: row.get(field) for field in fields}
         for row in data
     ]
+    if schema:
+        return pa.Table.from_pylist(filtered_data, schema=schema)
     return pa.Table.from_pylist(filtered_data)

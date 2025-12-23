@@ -3,13 +3,16 @@
 import logging
 from typing import Any, Dict, List, Literal
 
+import pyarrow as pa
+
 from common.catalog import get_catalog
 from data.iceberg.utils import to_arrow_table
 from data.interfaces import DataInserter
 
 
 class IcebergBaseInserter(DataInserter):
-    """Base inserter to Iceberg that can be used as a context manager
+    """
+    Base inserter to Iceberg that can be used as a context manager
     """
     def __init__(self, mode: Literal["append", "overwrite"] = "append"):
         super().__init__(mode=mode)
@@ -38,13 +41,17 @@ class IcebergBaseInserter(DataInserter):
             field_names (List[str]):
         """
         tbl_object = self._catalog.load_table(tbl_name)
-        data_py_tbl = to_arrow_table(data=data, fields=field_names)
+        tbl_pa_schema = tbl_object.schema().as_arrow()
+
+        # We attempt to convert the data into target's schema
+        data_pa_tbl = to_arrow_table(data=data, fields=field_names)
+        data_pa_tbl = data_pa_tbl.cast(pa.schema([tbl_pa_schema.field(f) for f in field_names]))
         
         match self.mode:
             case "append":
-                tbl_object.append(df=data_py_tbl)
+                tbl_object.append(df=data_pa_tbl)
             case "overwrite":
-                tbl_object.overwrite(df=data_py_tbl)
+                tbl_object.overwrite(df=data_pa_tbl)
             case _:
                 logging.info("No valid mode provided")
 

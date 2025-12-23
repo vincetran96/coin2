@@ -34,6 +34,7 @@ MAX_SYMBOLS_PER_CONNECTION = 200  # Manually adjusted
 
 def get_symbols(limit: int = 1000) -> List[str]:
     """Get all symbols
+
     Source: https://binance-docs.github.io/apidocs/spot/en/#exchange-information
 
     Args:

@@ -10,7 +10,8 @@ from data.interfaces import DataInserter
 
 
 class ClickHouseBaseInserter(DataInserter):
-    """Base inserter to ClickHouse that can be used as a context manager
+    """
+    Base inserter to ClickHouse that can be used as a context manager
     """
     def __init__(self):
         super().__init__()

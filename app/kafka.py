@@ -9,7 +9,6 @@ from confluent_kafka import Consumer
 
 from common.kafka import create_consumer, create_producer, send_to_kafka
 from data.interfaces import DataInserter
-from models.base_model import BaseModel
 
 
 class KafkaAccSender():
@@ -69,6 +68,8 @@ class KafkaAccDbInserter():
         msg_processor: Callable = lambda x: x
     ):
         """
+        The `msg_processor` callable should not be a costly operation, because it operates on every single message.
+
         Args:
             wait_timeout (int): Maximum duration in seconds to wait for msgs to arrive before attempting insert
             group_id (str): Kafka consumer group ID
@@ -94,10 +95,10 @@ class KafkaAccDbInserter():
     def add(self, data: Dict):
         self.data_list.append(self.msg_processor(data))
 
-    def insert_to_tbl(self, consumer: Consumer):
+    def insert_to_tbl(self, consumer: Consumer, db_inserter: DataInserter):
         if self.data_list:
             if len(self.data_list) >= self.batchsize or time.monotonic() - self.start_time >= self.wait_timeout:
-                self._db_inserter.insert(tbl_name=self.target_tbl, data=self.data_list, field_names=self.extract_fields)
+                db_inserter.insert(tbl_name=self.target_tbl, data=self.data_list, field_names=self.extract_fields)
                 
                 # Reset and commit
                 self.data_list = []
@@ -108,7 +109,7 @@ class KafkaAccDbInserter():
         """Run the consume process and insert
         """
         logging.info(f"Start consuming from topic: {self.topic}")
-        with self._consumer as consumer:
+        with self._consumer as consumer, self._db_inserter as db_inserter:
             consumer.subscribe([self.topic])
             while True:
                 msg_ = consumer.poll(timeout=self.poll_timeout)
@@ -118,4 +119,4 @@ class KafkaAccDbInserter():
                         continue
                     msg = msg_.value().decode("utf-8")
                     self.add(msg)
-                self.insert_to_tbl(consumer=consumer)
+                self.insert_to_tbl(consumer=consumer, db_inserter=db_inserter)
