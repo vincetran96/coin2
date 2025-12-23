@@ -6,7 +6,7 @@ import argparse
 import logging
 
 from common.consts import LOG_FORMAT
-from data.iceberg.db import drop_table
+from data.iceberg.utils import drop_table
 
 
 def _parse_args() -> argparse.Namespace:
