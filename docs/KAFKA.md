@@ -1,4 +1,4 @@
-**This doc contains details about database components of this repo.**
+**This doc contains details about Kafka component of this repo.**
 
 # Kafka commands
 Make sure we have a binary copy of Kafka executables.
