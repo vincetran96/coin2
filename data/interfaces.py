@@ -5,9 +5,6 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Literal
 
-# from data.clickhouse.base_inserter import BaseInserter as CHBaseInserter
-# from data.iceberg.base_inserter import BaseInserter as IBBaseInserter
-
 
 AVAILABLE_INSERTER_TYPES = [
     "clickhouse",
@@ -37,7 +34,7 @@ class DataInserter(ABC):
         pass
 
     @abstractmethod
-    def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs):
+    def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs) -> None:
         """Private method to be implemented
 
         Args:
@@ -45,7 +42,7 @@ class DataInserter(ABC):
         """
         pass
 
-    def insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs):
+    def insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs) -> None:
         """Public interface to insert data
         """
         self._insert(tbl_name=tbl_name, data=data, field_names=field_names, **kwargs)

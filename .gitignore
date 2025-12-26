@@ -25,6 +25,9 @@ temp/
 *-configmap.yaml
 *-volume.yaml
 
+build/clickhouse/.mnt/data
+build/clickhouse/.mnt/log
+
 # .gitignore template
 # Byte-compiled / optimized / DLL files
 __pycache__/
