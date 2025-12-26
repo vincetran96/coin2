@@ -1,13 +1,15 @@
 services:
-  ch-db:
+  ch-server:
     image: clickhouse/clickhouse-server:25.11.2
-    container_name: ch-db
-    hostname: ch-db
+    container_name: ch-server
+    hostname: ch-server
     restart: unless-stopped
     ports:
-      - "9000:9000"   # native TCP client
-      - "8123:8123"   # HTTP interface
-      - "9009:9009"   # interserver HTTP (replication, distributed)
+      - "49000:9000"   # native TCP client
+      - "48123:8123"   # HTTP interface
+      - "49009:9009"   # interserver HTTP (replication, distributed)
+    networks:
+      - data-infra
     volumes:
       - ./clickhouse/.mnt/data:/var/lib/clickhouse
       - ./clickhouse/.mnt/users:/etc/clickhouse-server/users.d
@@ -17,3 +19,8 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+
+# Use external Docker bridge network
+networks:
+  data-infra:
+    external: true
