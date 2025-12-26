@@ -64,7 +64,7 @@ def _select_and_cast(input_df: daft.DataFrame) -> daft.DataFrame:
         input_df.select(
             "exchange",
             "symbol",
-            col("timestamp").cast(DataType.timestamp(timeunit="ms")).alias("timestamp"),
+            col("timestamp").cast(DataType.timestamp(timeunit="ms")).alias("event_tstamp"),
             col("open_").cast(DataType.float64()).alias("open"),
             col("high_").cast(DataType.float64()).alias("high"),
             col("low_").cast(DataType.float64()).alias("low"),
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     delta_df = _get_delta_from_brz(brz_df, slv_df)
     
     logging.info("Processing new records from Bronze...")
-    for ts_i, ts_batch in enumerate(iter_batches_by_ts(input_df=delta_df, ts_col=CHG_TS_COL, step=timedelta(minutes=5))):
+    for ts_i, ts_batch in enumerate(iter_batches_by_ts(input_df=delta_df, ts_col=CHG_TS_COL, step=timedelta(minutes=30))):
         logging.info(f"Processing ts batch {ts_i}...")
         # Perform transformations
         batch_df = (
