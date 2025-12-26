@@ -30,8 +30,21 @@ Add a file `build/clickhouse/.mnt/users/app-inserter.xml` with this content:
 Test connection
 ```bash
 # Curl
-curl -u app_inserter:ChangeMe123 "http://localhost:8123/?query=SELECT+1"
+curl -u app_inserter:ChangeMe123 "http://TAILSCALE_IP:8123/?query=SELECT+1"
 
 # Access container shell
-docker exec -it ch-db bash
+docker exec -it ch-server bash
+
+# Interactive SQL shell
+docker exec -it ch-server clickhouse-client
+
+# This may not work in some cases due to hostname issues
+docker exec -it ch-server clickhouse-client \
+    --host=TAILSCALE_IP \
+    --port=9000 \
+    --user=app_inserter \
+    --password=ChangeMe123
+
+# If we have clickhouse-client
+clickhouse-client --host TAILSCALE_IP --port 49000 -u app_inserter --password ChangeMe123
 ```
