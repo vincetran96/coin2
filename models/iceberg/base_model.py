@@ -34,6 +34,11 @@ class BaseModel:
     def tbl_identifier(self) -> str:
         return f"{self.namespace}.{self.tbl_name}"
 
+    def load_table(self) -> None:
+        """Load the table from the catalog
+        """
+        self.tbl_object = self.catalog.load_table(self.tbl_identifier)
+
     def create_table_if_not_exists(self) -> None:
         """Create the table if it doesn't exist
         """

@@ -16,7 +16,7 @@ class IcebergBaseInserter(DataInserter):
     """
     Base inserter to Iceberg that can be used as a context manager
     """
-    def __init__(self, mode: Literal["append", "overwrite"] = "append"):
+    def __init__(self, mode: Literal["append", "overwrite"] = "append") -> None:
         super().__init__(mode=mode)
 
         # Private
@@ -32,7 +32,7 @@ class IcebergBaseInserter(DataInserter):
     #     """
     #     self._con.disconnect()
 
-    def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs):
+    def _insert(self, tbl_name: str, data: List[Dict], field_names: List[str], **kwargs) -> None:
         """Private method
 
         Insert data into Iceberg table
