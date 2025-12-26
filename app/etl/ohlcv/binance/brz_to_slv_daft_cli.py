@@ -9,13 +9,16 @@ import pyarrow as pa
 from daft import DataType, col, lit
 from pyiceberg.table import Table as PyIcebergTable
 
-from app.etl.utils.daft import deduplicate_data, iter_batches_by_ts, add_audit_columns
+from app.etl.utils.daft import iter_batches_by_ts, add_audit_columns
 from common.consts import LOG_FORMAT
 from common.catalog import create_namespace_if_not_exists
 from data.iceberg.consts import BINANCE_NAMESPACE
 from models.consts import CHG_TS_COL
 from models.iceberg.ohlcv.brz.binance import BinanceOHLCVBrz
 from models.iceberg.ohlcv.slv.binance import BinanceOHLCVSlv
+
+
+TS_BATCH_STEP = timedelta(minutes=30)
 
 
 def _get_delta_from_brz(
@@ -64,7 +67,7 @@ def _select_and_cast(input_df: daft.DataFrame) -> daft.DataFrame:
         input_df.select(
             "exchange",
             "symbol",
-            col("timestamp").cast(DataType.timestamp(timeunit="ms")).alias("event_tstamp"),
+            col("timestamp").cast(DataType.timestamp(timeunit="ms", timezone="UTC")).alias("event_tstamp"),
             col("open_").cast(DataType.float64()).alias("open"),
             col("high_").cast(DataType.float64()).alias("high"),
             col("low_").cast(DataType.float64()).alias("low"),
@@ -96,8 +99,7 @@ if __name__ == "__main__":
     delta_df = _get_delta_from_brz(brz_df, slv_df)
     
     logging.info("Processing new records from Bronze...")
-    for ts_i, ts_batch in enumerate(iter_batches_by_ts(input_df=delta_df, ts_col=CHG_TS_COL, step=timedelta(minutes=30))):
-        logging.info(f"Processing ts batch {ts_i}...")
+    for ts_batch in iter_batches_by_ts(input_df=delta_df, ts_col=CHG_TS_COL, step=TS_BATCH_STEP):
         # Perform transformations
         batch_df = (
             ts_batch.df
