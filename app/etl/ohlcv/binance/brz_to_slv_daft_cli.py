@@ -19,6 +19,7 @@ from models.iceberg.ohlcv.slv.binance import BinanceOHLCVSlv
 
 
 TS_BATCH_STEP = timedelta(minutes=30)
+DF_BATCHSIZE = 1_000_000
 
 
 def _get_delta_from_brz(
@@ -60,6 +61,8 @@ def _get_delta_from_brz(
 def _select_and_cast(input_df: daft.DataFrame) -> daft.DataFrame:
     """Select and cast columns from the input DataFrame
 
+    We take the change tstamp column as-is from the source table.
+
     Returns:
         daft.DataFrame:
     """
@@ -73,6 +76,7 @@ def _select_and_cast(input_df: daft.DataFrame) -> daft.DataFrame:
             col("low_").cast(DataType.float64()).alias("low"),
             col("close_").cast(DataType.float64()).alias("close"),
             col("volume_").cast(DataType.float64()).alias("volume"),
+            col(CHG_TS_COL).alias("src_change_tstamp"),
         )
     )
 
@@ -99,12 +103,13 @@ if __name__ == "__main__":
     delta_df = _get_delta_from_brz(brz_df, slv_df)
     
     logging.info("Processing new records from Bronze...")
-    for ts_batch in iter_batches_by_ts(input_df=delta_df, ts_col=CHG_TS_COL, step=TS_BATCH_STEP):
-        # Perform transformations
-        batch_df = (
-            ts_batch.df
-            .transform(_select_and_cast)
-            .transform(add_audit_columns)
-        )
+    delta_df = delta_df.into_batches(DF_BATCHSIZE)
 
-        batch_df.write_iceberg(slv_tbl_object, mode="append")
+    # Perform transformations
+    delta_df = (
+        delta_df
+        .transform(_select_and_cast)
+        .transform(add_audit_columns)
+    )
+
+    delta_df.write_iceberg(slv_tbl_object, mode="append")
