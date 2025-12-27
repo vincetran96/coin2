@@ -3,7 +3,7 @@
 # Coin app
 ```bash
 # Fetch from binance
-./scripts/uv-run-module-with-env.sh app.fetch.binance
+./scripts/uv-run-module-with-env.sh app.collector.binance
 
 # Save raw data
 ./scripts/uv-run-module-with-env.sh app.etl.save_raw_cli -t ws-binance --output_dir temp
