@@ -7,7 +7,7 @@ metadata:
   labels:
     app: coin2
   namespace: coin2
-  name: coin2-heartbeat
+  name: coin2-heartbeater
 spec:
   replicas: 1
   selector:
@@ -25,16 +25,16 @@ spec:
         - name: coin2-heartbeat
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
-          command: ["/bin/bash"]
-          args: ["./scripts/py-module.sh", "app.heartbeat"]
+          command: ["uv"]
+          args: ["run", "-m", "app.heartbeat"]
           envFrom:
           - configMapRef:
               name: env
           resources:
             requests:
-              memory: 8Mi
+              memory: 32Mi
               cpu: 0.1
             limits:
-              memory: 16Mi
+              memory: 64Mi
               cpu: 0.25
       restartPolicy: Always

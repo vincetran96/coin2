@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.coin.yaml
+    kompose.version: 1.34.0 (cbf2835db)
+  labels:
+    app: coin2
+  namespace: coin2
+  name: coin2-etl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coin2
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.coin.yaml
+        kompose.version: 1.34.0 (cbf2835db)
+      labels:
+        app: coin2
+    spec:
+      initContainers:
+        - name: coin2-etl-init
+          image: vincetran96/coin2:test
+          imagePullPolicy: IfNotPresent
+          command: ["uv"]
+          args: ["run", "-m", "app.etl.init"]
+          envFrom:
+          - configMapRef:
+              name: env
+      containers:
+        - name: coin2-etl-save-raw-binance
+          image: vincetran96/coin2:test
+          imagePullPolicy: IfNotPresent
+          command: ["uv"]
+          args: ["run", "-m", "app.etl.save_raw_cli", "-t", "ws-binance", "--output_dir", "/raw"]
+          envFrom:
+          - configMapRef:
+              name: env
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 0.5
+          volumeMounts:
+          - name: storage
+            mountPath: /raw
+        - name: coin2-etl-watch-raw
+          image: vincetran96/coin2:test
+          imagePullPolicy: IfNotPresent
+          command: ["uv"]
+          args: ["run", "-m", "app.etl.watch_raw_cli", "--dir", "/raw"]
+          envFrom:
+          - configMapRef:
+              name: env
+          resources:
+            limits:
+              memory: 64Mi
+              cpu: 0.5
+          volumeMounts:
+          - name: storage
+            mountPath: /raw
+
+        # - name: coin2-fetch-bitfinex
+        #   image: vincetran96/coin2:test
+        #   imagePullPolicy: IfNotPresent
+        #   command: ["uv"]
+        #   args: ["run", "-m", "app.collector.bitfinex"]
+        #   envFrom:
+        #   - configMapRef:
+        #       name: env
+        #   resources:
+        #     limits:
+        #       memory: 128Mi
+        #       cpu: 0.5
+        # - name: coin2-fetch-bybit
+        #   image: vincetran96/coin2:test
+        #   imagePullPolicy: IfNotPresent
+        #   command: ["uv"]
+        #   args: ["run", "-m", "app.collector.bybit"]
+        #   envFrom:
+        #   - configMapRef:
+        #       name: env
+        #   resources:
+        #     limits:
+        #       memory: 128Mi
+        #       cpu: 0.5
+        # - name: coin2-fetch-okx
+        #   image: vincetran96/coin2:test
+        #   imagePullPolicy: IfNotPresent
+        #   command: ["uv"]
+        #   args: ["run", "-m", "app.collector.okx"]
+        #   envFrom:
+        #   - configMapRef:
+        #       name: env
+        #   resources:
+        #     limits:
+        #       memory: 128Mi
+        #       cpu: 0.5
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: coin2-pvc-raw
+      restartPolicy: Always

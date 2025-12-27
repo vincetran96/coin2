@@ -1,0 +1,26 @@
+services:
+  ch-server:
+    image: clickhouse/clickhouse-server:25.11.2
+    container_name: ch-server
+    hostname: ch-server
+    restart: unless-stopped
+    ports:
+      - "49000:9000"   # native TCP client
+      - "48123:8123"   # HTTP interface
+      - "49009:9009"   # interserver HTTP (replication, distributed)
+    networks:
+      - data-infra
+    volumes:
+      - ./clickhouse/.mnt/data:/var/lib/clickhouse
+      - ./clickhouse/.mnt/users:/etc/clickhouse-server/users.d
+      - ./clickhouse/.mnt/log:/var/log/clickhouse-server
+      # - ./clickhouse/.mnt/config:/etc/clickhouse-server/config.d  # Mounting the config dir may cause connection issues
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+# Use external Docker bridge network
+networks:
+  data-infra:
+    external: true

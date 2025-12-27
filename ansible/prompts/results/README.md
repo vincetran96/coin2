@@ -1,0 +1,1 @@
+This directory stores AI prompt results.

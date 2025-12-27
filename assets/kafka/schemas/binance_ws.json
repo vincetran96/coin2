@@ -1,0 +1,39 @@
+{
+    "type": "record",
+    "name": "BinanceOHLCV",
+    "fields": [
+        {
+            "name": "exchange",
+            "type": "string"
+        },
+        {
+            "name": "symbol",
+            "type": "string"
+        },
+        {
+            "name": "timestamp",
+            "type": "long",
+            "logicalType": "timestamp-millis"
+        },
+        {
+            "name": "open_",
+            "type": "string"
+        },
+        {
+            "name": "high_",
+            "type": "string"
+        },
+        {
+            "name": "low_",
+            "type": "string"
+        },
+        {
+            "name": "close_",
+            "type": "string"
+        },
+        {
+            "name": "volume_",
+            "type": "string"
+        }
+    ]
+}

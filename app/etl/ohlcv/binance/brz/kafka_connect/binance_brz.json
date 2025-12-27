@@ -1,0 +1,32 @@
+{
+  "name": "iceberg-binance-ohlcv-brz",
+  "config": {
+    "connector.class": "org.apache.iceberg.connect.IcebergSinkConnector",
+    "tasks.max": "2",
+    "topics": "ws-binance",
+    
+    "iceberg.tables": "binance.ohlcv_brz",
+    "iceberg.tables.auto-create-enabled": "false",
+    "iceberg.tables.evolve-schema-enabled": "true",
+    "iceberg.tables.schema-force-optional": "true",
+    
+    "iceberg.catalog": "rest-catalog",
+    "iceberg.catalog.type": "rest",
+    "iceberg.catalog.uri": "http://iceberg-rest:8181",
+
+    "iceberg.catalog.io-impl": "org.apache.iceberg.aws.s3.S3FileIO",
+    "iceberg.catalog.s3.endpoint": "http://minio:9000",
+    "iceberg.catalog.s3.path-style-access": "true",
+    
+    "iceberg.control.topic": "ctrl-iceberg-ws-binance",
+    "iceberg.control.group-id": "cg-ctrl-iceberg-ws-binance",
+    
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+
+    "errors.tolerance": "none",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true"
+  }
+}

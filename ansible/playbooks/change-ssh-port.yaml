@@ -1,0 +1,486 @@
+---
+# =============================================================================
+# Ansible Playbook: Change SSH Port (Debian/Ubuntu Only)
+# =============================================================================
+# This playbook changes the SSH port to reduce automated bot attacks
+#
+# Usage:
+#   ansible-playbook -i inventory.ini change-ssh-port.yml -e "new_ssh_port=62222"
+#
+# IMPORTANT: After running this playbook:
+#   1. Update inventory.ini with new port
+#   2. Test connection before closing current session
+# =============================================================================
+
+- name: Change SSH Port for Security (Debian/Ubuntu)
+  hosts: all
+  become: true
+  gather_facts: true
+  
+  vars:
+    # Default new SSH port (override with -e new_ssh_port=XXXX)
+    new_ssh_port: 62222
+    current_ssh_port: "{{ ansible_port | default(22) }}"
+  
+  pre_tasks:
+    - name: "PREFLIGHT | Verify OS is Debian/Ubuntu"
+      assert:
+        that:
+          - ansible_facts['os_family'] == 'Debian'
+        fail_msg: "This playbook only supports Debian/Ubuntu systems. Detected: {{ ansible_facts['os_family'] }}"
+        success_msg: "OS verified: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+      tags: always
+    
+    - name: "PREFLIGHT | Display warning"
+      debug:
+        msg: |
+          
+          ========================================================================
+          WARNING: SSH Port Change
+          ========================================================================
+          
+          This will change SSH port from {{ current_ssh_port }} to {{ new_ssh_port }}
+          
+          Make sure you:
+          1. Have console access to the server (in case SSH breaks)
+          2. Will update inventory.ini after this playbook completes
+          3. Have tested the new port is not blocked by external firewalls
+          
+          Press Ctrl+C within 10 seconds to abort...
+          ========================================================================
+          
+      tags: always
+    
+    - name: "PREFLIGHT | Wait 10 seconds for abort"
+      pause:
+        seconds: 10
+      tags: always
+    
+    - name: "PREFLIGHT | Validate new port number"
+      assert:
+        that:
+          - new_ssh_port | int > 1024
+          - new_ssh_port | int < 65536
+          - new_ssh_port | int != current_ssh_port | int
+        fail_msg: "Invalid port number. Must be between 1024-65535 and different from current port {{ current_ssh_port }}."
+        success_msg: "Port number {{ new_ssh_port }} is valid"
+      tags: always
+  
+  tasks:
+    # =========================================================================
+    # INSTALL REQUIRED PACKAGES
+    # =========================================================================
+    
+    - name: "PACKAGES | Update apt cache"
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+      tags: [packages]
+    
+    - name: "PACKAGES | Install required packages"
+      apt:
+        name:
+          - ufw
+          - openssh-server
+          - net-tools
+          - lsof
+        state: present
+      tags: [packages]
+    
+    - name: "PACKAGES | Display installed packages"
+      debug:
+        msg: "Required packages installed: ufw, openssh-server, net-tools, lsof"
+      tags: [packages]
+    
+    # =========================================================================
+    # BACKUP CONFIGURATION
+    # =========================================================================
+    
+    - name: "BACKUP | Create backup directory"
+      file:
+        path: /root/ssh-backup
+        state: directory
+        mode: '0700'
+      tags: [backup]
+    
+    - name: "BACKUP | Create backup of sshd_config"
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: "/root/ssh-backup/sshd_config.backup.{{ ansible_facts['date_time']['epoch'] }}"
+        remote_src: true
+        mode: '0600'
+      tags: [backup]
+    
+    - name: "BACKUP | Display backup location"
+      debug:
+        msg: "Backup created at: /root/ssh-backup/sshd_config.backup.{{ ansible_facts['date_time']['epoch'] }}"
+      tags: [backup]
+    
+    # =========================================================================
+    # FIREWALL CONFIGURATION (BEFORE SSH CHANGE)
+    # =========================================================================
+    
+    - name: "FIREWALL | Ensure UFW allows current SSH port"
+      command: "ufw allow {{ current_ssh_port }}/tcp"
+      register: ufw_current_port
+      changed_when: "'Rule added' in ufw_current_port.stdout or 'rule added' in ufw_current_port.stdout"
+      tags: [firewall]
+    
+    - name: "FIREWALL | Allow new SSH port in UFW"
+      command: "ufw allow {{ new_ssh_port }}/tcp comment 'SSH custom port'"
+      register: ufw_new_port
+      changed_when: "'Rule added' in ufw_new_port.stdout or 'rule added' in ufw_new_port.stdout"
+      tags: [firewall]
+    
+    - name: "FIREWALL | Display UFW status"
+      debug:
+        msg: |
+          Current SSH port {{ current_ssh_port }}: {{ 'already allowed' if ufw_current_port.changed == false else 'now allowed' }}
+          New SSH port {{ new_ssh_port }}: {{ 'already allowed' if ufw_new_port.changed == false else 'now allowed' }}
+      tags: [firewall]
+    
+    - name: "FIREWALL | Check if UFW is active"
+      command: ufw status
+      register: ufw_status_check
+      changed_when: false
+      tags: [firewall]
+    
+    - name: "FIREWALL | Display UFW active status"
+      debug:
+        msg: "UFW Status: {{ 'ACTIVE' if 'Status: active' in ufw_status_check.stdout else 'INACTIVE' }}"
+      tags: [firewall]
+    
+    - name: "FIREWALL | Warning if UFW is inactive"
+      debug:
+        msg: |
+          WARNING: UFW is currently inactive.
+          Firewall rules are configured but not enforced.
+          Enable with: sudo ufw enable
+      when: "'Status: active' not in ufw_status_check.stdout"
+      tags: [firewall]
+    
+    # =========================================================================
+    # SSH PORT CHANGE
+    # =========================================================================
+    
+    - name: "SSH | Change SSH port in sshd_config"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*Port\s+'
+        line: 'Port {{ new_ssh_port }}'
+        state: present
+        backup: true
+        validate: '/usr/sbin/sshd -t -f %s'
+      register: ssh_port_changed
+      tags: [ssh]
+    
+    - name: "SSH | Ensure SSH listens on all interfaces"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*ListenAddress\s+'
+        line: 'ListenAddress 0.0.0.0'
+        state: present
+      tags: [ssh]
+    
+    - name: "SSH | Display change status"
+      debug:
+        msg: "SSH port configuration {{ 'updated to ' + (new_ssh_port|string) if ssh_port_changed.changed else 'already set to ' + (new_ssh_port|string) }}"
+      tags: [ssh]
+    
+    # =========================================================================
+    # TEST BEFORE RESTART
+    # =========================================================================
+    
+    - name: "TEST | Validate sshd configuration syntax"
+      command: sshd -t
+      changed_when: false
+      tags: [test]
+    
+    - name: "TEST | Display validation success"
+      debug:
+        msg: "SSH configuration syntax is valid"
+      tags: [test]
+    
+    - name: "TEST | Check if new port is already in use"
+      shell: "lsof -i :{{ new_ssh_port }} -sTCP:LISTEN"
+      register: port_check
+      changed_when: false
+      failed_when: false
+      tags: [test]
+    
+    - name: "TEST | Verify port availability"
+      assert:
+        that:
+          - port_check.rc != 0
+        fail_msg: "ERROR: Port {{ new_ssh_port }} is already in use by another process!"
+        success_msg: "Port {{ new_ssh_port }} is available"
+      tags: [test]
+    
+    # =========================================================================
+    # TEMPORARY DUAL-PORT CONFIGURATION
+    # =========================================================================
+    
+    - name: "SSH | Add temporary dual-port listening"
+      blockinfile:
+        path: /etc/ssh/sshd_config
+        marker: "# {mark} ANSIBLE MANAGED - TEMPORARY DUAL PORT"
+        block: |
+          # Temporary: Listen on both old and new ports during transition
+          Port {{ current_ssh_port }}
+          Port {{ new_ssh_port }}
+        insertafter: '^Port {{ new_ssh_port }}'
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Reload systemd daemon"
+      command: systemctl daemon-reload
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Restart SSH socket"
+      systemd:
+        name: ssh.socket
+        state: restarted
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Ensure SSH service is running"
+      systemd:
+        name: ssh.service
+        state: started
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Wait for new SSH port to become available"
+      wait_for:
+        port: "{{ new_ssh_port }}"
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        delay: 3
+        timeout: 30
+        state: started
+      delegate_to: localhost
+      become: false
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Wait for current SSH port to be available"
+      wait_for:
+        port: "{{ current_ssh_port }}"
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        delay: 1
+        timeout: 30
+        state: started
+      delegate_to: localhost
+      become: false
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Verify both ports are listening"
+      shell: "ss -tlnp | grep sshd | grep -E ':{{ current_ssh_port }}|:{{ new_ssh_port }}'"
+      register: verify_dual_ports
+      changed_when: false
+      failed_when: false
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Display listening ports"
+      debug:
+        msg: "{{ verify_dual_ports.stdout_lines }}"
+      when: 
+        - ssh_port_changed.changed
+        - verify_dual_ports.stdout_lines is defined
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Display dual-port status"
+      debug:
+        msg: |
+          SSH is now listening on BOTH ports:
+          - Old port: {{ current_ssh_port }}
+          - New port: {{ new_ssh_port }}
+          
+          This allows safe transition. Test the new port before removing the old one.
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+    
+    - name: "SSH | Instructions for manual cleanup"
+      debug:
+        msg: |
+          
+          ========================================================================
+          IMPORTANT: Manual Cleanup Required
+          ========================================================================
+          
+          SSH is currently listening on BOTH ports for safety.
+          
+          After you verify the new port {{ new_ssh_port }} works:
+          
+          1. Connect using new port:
+             ssh -p {{ new_ssh_port }} {{ ansible_user }}@{{ ansible_host | default(inventory_hostname) }}
+          
+          2. Remove the dual-port configuration:
+             sudo sed -i '/# BEGIN ANSIBLE MANAGED - TEMPORARY DUAL PORT/,/# END ANSIBLE MANAGED - TEMPORARY DUAL PORT/d' /etc/ssh/sshd_config
+          
+          3. Restart SSH service (will only listen on new port):
+             sudo systemctl daemon-reload
+             sudo systemctl restart ssh.socket
+             sudo systemctl restart ssh.service
+          
+          4. Remove old port from firewall:
+             sudo ufw delete allow {{ current_ssh_port }}/tcp
+          
+          ========================================================================
+      when: ssh_port_changed.changed
+      tags: [ssh, dual-port]
+  
+  post_tasks:
+    # =========================================================================
+    # POST-CHANGE INSTRUCTIONS
+    # =========================================================================
+    
+    - name: "COMPLETE | Create reminder file"
+      copy:
+        dest: "/root/SSH_PORT_CHANGED_TO_{{ new_ssh_port }}.txt"
+        content: |
+          ========================================================================
+          SSH Port Change Summary
+          ========================================================================
+          
+          Date: {{ ansible_facts['date_time']['iso8601'] }}
+          Server: {{ inventory_hostname }}
+          IP: {{ ansible_host | default(inventory_hostname) }}
+          
+          Old Port: {{ current_ssh_port }}
+          New Port: {{ new_ssh_port }}
+          
+          STATUS: SSH is listening on BOTH ports during transition
+          
+          ========================================================================
+          Configuration Updates Required
+          ========================================================================
+          
+          Update inventory.ini:
+          ---------------------
+          {{ inventory_hostname }} ansible_host={{ ansible_host | default(inventory_hostname) }} ansible_port={{ new_ssh_port }} ansible_user={{ ansible_user }}
+          
+          Update ~/.ssh/config:
+          ---------------------
+          Host {{ inventory_hostname }}
+              HostName {{ ansible_host | default(inventory_hostname) }}
+              Port {{ new_ssh_port }}
+              User {{ ansible_user }}
+          
+          ========================================================================
+          Cleanup Steps (After Verifying New Port Works)
+          ========================================================================
+          
+          1. Test new port:
+             ssh -p {{ new_ssh_port }} {{ ansible_user }}@{{ ansible_host | default(inventory_hostname) }}
+          
+          2. Remove dual-port configuration:
+             sudo sed -i '/# BEGIN ANSIBLE MANAGED - TEMPORARY DUAL PORT/,/# END ANSIBLE MANAGED - TEMPORARY DUAL PORT/d' /etc/ssh/sshd_config
+          
+          3. Restart SSH services:
+             sudo systemctl daemon-reload
+             sudo systemctl restart ssh.socket
+             sudo systemctl restart ssh.service
+          
+          4. Remove old port from firewall:
+             sudo ufw delete allow {{ current_ssh_port }}/tcp
+             sudo ufw status
+          
+          ========================================================================
+          Backup Location
+          ========================================================================
+          
+          /root/ssh-backup/sshd_config.backup.{{ ansible_facts['date_time']['epoch'] }}
+          
+          ========================================================================
+          Rollback Instructions (if needed)
+          ========================================================================
+          
+          sudo cp /root/ssh-backup/sshd_config.backup.* /etc/ssh/sshd_config
+          sudo systemctl daemon-reload
+          sudo systemctl restart ssh.socket
+          sudo systemctl restart ssh.service
+          
+          ========================================================================
+        mode: '0600'
+      tags: always
+    
+    - name: "COMPLETE | Display success message"
+      debug:
+        msg: |
+          
+          ========================================================================
+          SSH Port Change Successful!
+          ========================================================================
+          
+          Old Port: {{ current_ssh_port }}
+          New Port: {{ new_ssh_port }}
+          Server: {{ ansible_host | default(inventory_hostname) }}
+          
+          STATUS: SSH is currently listening on BOTH ports for safe transition
+          
+          ========================================================================
+          NEXT STEPS - Critical!
+          ========================================================================
+          
+          1. Update inventory.ini RIGHT NOW:
+             
+             [all]
+             {{ inventory_hostname }} ansible_host={{ ansible_host | default(inventory_hostname) }} ansible_port={{ new_ssh_port }} ansible_user={{ ansible_user }}
+          
+          2. Test new port in a NEW terminal (keep this one open):
+             
+             ssh -p {{ new_ssh_port }} {{ ansible_user }}@{{ ansible_host | default(inventory_hostname) }}
+          
+          3. Test Ansible connection:
+             
+             ansible all -i inventory.ini -m ping
+          
+          4. If new port works, connect and finalize the change:
+             
+             ssh -p {{ new_ssh_port }} {{ ansible_user }}@{{ ansible_host | default(inventory_hostname) }}
+             
+             # Remove dual-port configuration
+             sudo sed -i '/# BEGIN ANSIBLE MANAGED - TEMPORARY DUAL PORT/,/# END ANSIBLE MANAGED - TEMPORARY DUAL PORT/d' /etc/ssh/sshd_config
+             
+             # Restart SSH services
+             sudo systemctl daemon-reload
+             sudo systemctl restart ssh.socket
+             sudo systemctl restart ssh.service
+             
+             # Remove old port from firewall
+             sudo ufw delete allow {{ current_ssh_port }}/tcp
+          
+          ========================================================================
+          Security Notes
+          ========================================================================
+          
+          - SSH currently listens on BOTH {{ current_ssh_port }} and {{ new_ssh_port }}
+          - Both ports are allowed in UFW
+          - UFW Status: {{ 'ACTIVE (firewall enforced)' if 'Status: active' in ufw_status_check.stdout else 'INACTIVE (rules configured but not enforced)' }}
+          
+          {% if 'Status: active' not in ufw_status_check.stdout %}
+          - TO ENABLE UFW (after verifying SSH works):
+            
+            ssh -p {{ new_ssh_port }} {{ ansible_user }}@{{ ansible_host | default(inventory_hostname) }}
+            sudo ufw enable
+          {% endif %}
+          
+          ========================================================================
+          Emergency Rollback
+          ========================================================================
+          
+          If something goes wrong, use console access:
+             
+             sudo cp /root/ssh-backup/sshd_config.backup.{{ ansible_facts['date_time']['epoch'] }} /etc/ssh/sshd_config
+             sudo systemctl daemon-reload
+             sudo systemctl restart ssh.socket
+             sudo systemctl restart ssh.service
+          
+          Summary saved to: /root/SSH_PORT_CHANGED_TO_{{ new_ssh_port }}.txt
+          
+          ========================================================================
+          
+      tags: always

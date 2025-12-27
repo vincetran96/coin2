@@ -7,7 +7,7 @@ metadata:
   labels:
     app: coin2
   namespace: coin2
-  name: coin2-fetch
+  name: coin2-fetcher
 spec:
   replicas: 1
   selector:
@@ -25,8 +25,8 @@ spec:
         - name: coin2-fetch-init
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
-          command: ["/bin/bash"]
-          args: ["./scripts/py-module.sh", "app.fetch.init"]
+          command: ["uv"]
+          args: ["run", "-m", "app.collector.init"]
           envFrom:
           - configMapRef:
               name: env
@@ -34,49 +34,49 @@ spec:
         - name: coin2-fetch-binance
           image: vincetran96/coin2:test
           imagePullPolicy: IfNotPresent
-          command: ["/bin/bash"]
-          args: ["./scripts/py-module.sh", "app.fetch.binance"]
+          command: ["uv"]
+          args: ["run", "-m", "app.collector.binance"]
           envFrom:
           - configMapRef:
               name: env
           resources:
             limits:
-              memory: 256Mi
+              memory: 512Mi
               cpu: 0.5
-        - name: coin2-fetch-bitfinex
-          image: vincetran96/coin2:test
-          imagePullPolicy: IfNotPresent
-          command: ["/bin/bash"]
-          args: ["./scripts/py-module.sh", "app.fetch.bitfinex"]
-          envFrom:
-          - configMapRef:
-              name: env
-          resources:
-            limits:
-              memory: 128Mi
-              cpu: 0.5
-        - name: coin2-fetch-bybit
-          image: vincetran96/coin2:test
-          imagePullPolicy: IfNotPresent
-          command: ["/bin/bash"]
-          args: ["./scripts/py-module.sh", "app.fetch.bybit"]
-          envFrom:
-          - configMapRef:
-              name: env
-          resources:
-            limits:
-              memory: 128Mi
-              cpu: 0.5
-        - name: coin2-fetch-okx
-          image: vincetran96/coin2:test
-          imagePullPolicy: IfNotPresent
-          command: ["/bin/bash"]
-          args: ["./scripts/py-module.sh", "app.fetch.okx"]
-          envFrom:
-          - configMapRef:
-              name: env
-          resources:
-            limits:
-              memory: 128Mi
-              cpu: 0.5
+        # - name: coin2-fetch-bitfinex
+        #   image: vincetran96/coin2:test
+        #   imagePullPolicy: IfNotPresent
+        #   command: ["uv"]
+        #   args: ["run", "-m", "app.collector.bitfinex"]
+        #   envFrom:
+        #   - configMapRef:
+        #       name: env
+        #   resources:
+        #     limits:
+        #       memory: 128Mi
+        #       cpu: 0.5
+        # - name: coin2-fetch-bybit
+        #   image: vincetran96/coin2:test
+        #   imagePullPolicy: IfNotPresent
+        #   command: ["uv"]
+        #   args: ["run", "-m", "app.collector.bybit"]
+        #   envFrom:
+        #   - configMapRef:
+        #       name: env
+        #   resources:
+        #     limits:
+        #       memory: 128Mi
+        #       cpu: 0.5
+        # - name: coin2-fetch-okx
+        #   image: vincetran96/coin2:test
+        #   imagePullPolicy: IfNotPresent
+        #   command: ["uv"]
+        #   args: ["run", "-m", "app.collector.okx"]
+        #   envFrom:
+        #   - configMapRef:
+        #       name: env
+        #   resources:
+        #     limits:
+        #       memory: 128Mi
+        #       cpu: 0.5
       restartPolicy: Always

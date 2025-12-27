@@ -1,0 +1,22 @@
+<clickhouse>
+  <users>
+    <app_inserter>
+      <password>ChangeMe123</password>
+
+      <!-- restrict networks to host/docker bridge; adjust to your LAN/Tailscale as needed -->
+      <networks>
+        <ip>::/0</ip>
+        <ip>TAILSCALE_IP/32</ip>
+        <ip>127.0.0.1</ip>
+        <!-- <ip>0.0.0.0/0</ip> -->
+        <!-- Docker default bridge network range -->
+        <!-- <ip>172.17.0.0/16</ip> -->
+        <!-- Also allow common Docker bridge gateway IP -->
+        <!-- <ip>172.17.0.1</ip> -->
+      </networks>
+
+      <profile>default</profile>
+      <quota>default</quota>
+    </app_inserter>
+  </users>
+</clickhouse>

@@ -6,10 +6,9 @@ WORKDIR /opt/coin2
 COPY . /opt/coin2
 
 RUN apt-get update -y
-RUN apt-get install -y iputils-ping dnsutils telnet nano pipx
+RUN apt-get install -y iputils-ping dnsutils telnet nano
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ENV PATH="${PATH}:/root/.local/bin"
-RUN pipx install poetry
-RUN poetry self add poetry-plugin-export
-RUN poetry export -f requirements.txt --output requirements.txt
-RUN pip install -r requirements.txt
+RUN uv sync

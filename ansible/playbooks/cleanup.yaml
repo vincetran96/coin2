@@ -1,0 +1,382 @@
+---
+# =============================================================================
+# Ansible Playbook: Cleanup/Rollback All Installations
+# =============================================================================
+# This playbook removes all components installed by setup-playbook.yml
+# in REVERSE order to avoid dependency issues
+#
+# Usage:
+#   ansible-playbook -i inventory.ini cleanup-playbook.yml
+#
+# WARNING: This will completely remove:
+#   - uv-python
+#   - K3s
+#   - Docker
+#   - Tailscale
+#
+# =============================================================================
+
+- name: Cleanup/Rollback Machine Setup
+  hosts: all
+  become: true
+  gather_facts: true
+  
+  vars:
+    # Confirmation required (set to false to skip confirmation)
+    require_confirmation: true
+    
+  tasks:
+    - name: "PRE | Determine actual SSH user"
+      set_fact:
+        # Get the actual SSH user, not root
+        actual_user: "{{ ansible_user }}"
+        actual_user_home: "/home/{{ ansible_user }}"
+      tags: always
+    
+    - name: "CONFIRM | Display warning message"
+      debug:
+        msg: |
+          ⚠️  WARNING ⚠️  WARNING ⚠️  WARNING ⚠️
+          
+          This playbook will REMOVE:
+          • uv-python installation for user {{ actual_user }}
+          • K3s cluster (all data will be lost!)
+          • Docker (containers will be removed!)
+          • Tailscale connection
+          
+          This action CANNOT be undone!
+          
+          Press Ctrl+C and then 'A' to abort
+          Press Enter to continue...
+      when: require_confirmation | bool
+      tags: always
+    
+    - name: "CONFIRM | Wait for user confirmation"
+      pause:
+        prompt: "Type 'yes' to continue with cleanup"
+      register: user_confirmation
+      when: require_confirmation | bool
+      tags: always
+    
+    - name: "CONFIRM | Verify user wants to proceed"
+      assert:
+        that:
+          - user_confirmation.user_input == "yes"
+        fail_msg: "Cleanup cancelled by user"
+        success_msg: "Proceeding with cleanup..."
+      when: require_confirmation | bool
+      tags: always
+    
+    # =========================================================================
+    # CLEANUP 1: UV-PYTHON (First, as it has no dependencies)
+    # =========================================================================
+    
+    - name: "UV-PYTHON | Remove uv installation"
+      file:
+        path: "{{ actual_user_home }}/.cargo"
+        state: absent
+      tags: [uv, cleanup_uv]
+    
+    - name: "UV-PYTHON | Remove PATH entries from .bashrc"
+      become: false
+      lineinfile:
+        path: "{{ actual_user_home }}/.bashrc"
+        regexp: '.*\.cargo/bin.*'
+        state: absent
+      tags: [uv, cleanup_uv]
+      ignore_errors: true
+    
+    - name: "UV-PYTHON | Remove PATH entries from .profile"
+      become: false
+      lineinfile:
+        path: "{{ actual_user_home }}/.profile"
+        regexp: '.*\.cargo/bin.*'
+        state: absent
+      tags: [uv, cleanup_uv]
+      ignore_errors: true
+    
+    - name: "UV-PYTHON | Display status"
+      debug:
+        msg: "✓ uv-python removed for user {{ actual_user }}"
+      tags: [uv, cleanup_uv]
+    
+    # =========================================================================
+    # CLEANUP 2: K3S (Before Docker, as it may use Docker)
+    # =========================================================================
+    
+    - name: "K3S | Check if K3s is installed"
+      stat:
+        path: /usr/local/bin/k3s-uninstall.sh
+      register: k3s_uninstall_script
+      tags: [k3s, cleanup_k3s]
+    
+    - name: "K3S | Stop K3s service"
+      systemd:
+        name: k3s
+        state: stopped
+      when: k3s_uninstall_script.stat.exists
+      ignore_errors: true
+      tags: [k3s, cleanup_k3s]
+    
+    - name: "K3S | Run official uninstall script"
+      command: /usr/local/bin/k3s-uninstall.sh
+      when: k3s_uninstall_script.stat.exists
+      register: k3s_uninstall
+      tags: [k3s, cleanup_k3s]
+    
+    - name: "K3S | Remove kubeconfig directory"
+      file:
+        path: "{{ actual_user_home }}/.kube"
+        state: absent
+      tags: [k3s, cleanup_k3s]
+    
+    - name: "K3S | Remove UFW application profile"
+      file:
+        path: /etc/ufw/applications.d/k3s
+        state: absent
+      tags: [k3s, cleanup_k3s]
+    
+    - name: "K3S | Remove K3s data directory"
+      file:
+        path: /var/lib/rancher
+        state: absent
+      tags: [k3s, cleanup_k3s]
+      ignore_errors: true
+    
+    - name: "K3S | Display status"
+      debug:
+        msg: "✓ K3s removed and cleaned up"
+      tags: [k3s, cleanup_k3s]
+    
+    # =========================================================================
+    # CLEANUP 3: DOCKER (After K3s)
+    # =========================================================================
+    
+    - name: "DOCKER | Stop all running containers"
+      shell: |
+        if command -v docker &> /dev/null; then
+          docker stop $(docker ps -aq) 2>/dev/null || true
+        fi
+      tags: [docker, cleanup_docker]
+      ignore_errors: true
+    
+    - name: "DOCKER | Remove all containers"
+      shell: |
+        if command -v docker &> /dev/null; then
+          docker rm $(docker ps -aq) 2>/dev/null || true
+        fi
+      tags: [docker, cleanup_docker]
+      ignore_errors: true
+    
+    - name: "DOCKER | Remove all images"
+      shell: |
+        if command -v docker &> /dev/null; then
+          docker rmi $(docker images -q) 2>/dev/null || true
+        fi
+      tags: [docker, cleanup_docker]
+      ignore_errors: true
+    
+    - name: "DOCKER | Remove all volumes"
+      shell: |
+        if command -v docker &> /dev/null; then
+          docker volume rm $(docker volume ls -q) 2>/dev/null || true
+        fi
+      tags: [docker, cleanup_docker]
+      ignore_errors: true
+    
+    - name: "DOCKER | Stop Docker service"
+      systemd:
+        name: docker
+        state: stopped
+      ignore_errors: true
+      tags: [docker, cleanup_docker]
+    
+    - name: "DOCKER | Remove Docker packages"
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: absent
+        purge: true
+      tags: [docker, cleanup_docker]
+    
+    - name: "DOCKER | Remove user from docker group"
+      user:
+        name: "{{ actual_user }}"
+        groups: docker
+        state: absent
+      when: actual_user != 'root'
+      tags: [docker, cleanup_docker]
+      ignore_errors: true
+    
+    - name: "DOCKER | Remove Docker repository"
+      file:
+        path: /etc/apt/sources.list.d/docker.sources
+        state: absent
+      tags: [docker, cleanup_docker]
+    
+    - name: "DOCKER | Remove Docker GPG key"
+      file:
+        path: /etc/apt/keyrings/docker.asc
+        state: absent
+      tags: [docker, cleanup_docker]
+    
+    - name: "DOCKER | Remove Docker data directory"
+      file:
+        path: /var/lib/docker
+        state: absent
+      tags: [docker, cleanup_docker]
+    
+    - name: "DOCKER | Remove Docker configuration directory"
+      file:
+        path: /etc/docker
+        state: absent
+      tags: [docker, cleanup_docker]
+    
+    - name: "DOCKER | Update apt cache"
+      apt:
+        update_cache: true
+      tags: [docker, cleanup_docker]
+    
+    - name: "DOCKER | Display status"
+      debug:
+        msg: "✓ Docker completely removed (containers, images, volumes, packages)"
+      tags: [docker, cleanup_docker]
+    
+    # =========================================================================
+    # CLEANUP 4: TAILSCALE (Last, as others don't depend on it)
+    # =========================================================================
+    
+    - name: "TAILSCALE | Disconnect from Tailscale network"
+      command: tailscale down
+      ignore_errors: true
+      tags: [tailscale, cleanup_tailscale]
+    
+    - name: "TAILSCALE | Stop Tailscale service"
+      systemd:
+        name: tailscaled
+        state: stopped
+      ignore_errors: true
+      tags: [tailscale, cleanup_tailscale]
+    
+    - name: "TAILSCALE | Remove Tailscale package"
+      apt:
+        name: tailscale
+        state: absent
+        purge: true
+      tags: [tailscale, cleanup_tailscale]
+    
+    - name: "TAILSCALE | Remove Tailscale repository"
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/tailscale.list
+        - /usr/share/keyrings/tailscale-archive-keyring.gpg
+      tags: [tailscale, cleanup_tailscale]
+    
+    - name: "TAILSCALE | Remove Tailscale data directory"
+      file:
+        path: /var/lib/tailscale
+        state: absent
+      tags: [tailscale, cleanup_tailscale]
+    
+    - name: "TAILSCALE | Update apt cache"
+      apt:
+        update_cache: true
+      tags: [tailscale, cleanup_tailscale]
+    
+    - name: "TAILSCALE | Display status"
+      debug:
+        msg: "✓ Tailscale removed and disconnected"
+      tags: [tailscale, cleanup_tailscale]
+    
+    # =========================================================================
+    # FINAL CLEANUP & SUMMARY
+    # =========================================================================
+    
+    - name: "CLEANUP | Remove leftover configuration files"
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/k3s.service
+        - /etc/systemd/system/docker.service.d
+      ignore_errors: true
+      tags: always
+    
+    - name: "CLEANUP | Reload systemd daemon"
+      systemd:
+        daemon_reload: true
+      tags: always
+    
+    - name: "CLEANUP | Remove unused packages"
+      apt:
+        autoremove: true
+        autoclean: true
+      tags: always
+    
+    - name: "SUMMARY | Verify removals"
+      block:
+        - name: "SUMMARY | Check Tailscale removed"
+          command: which tailscale
+          register: check_tailscale
+          ignore_errors: true
+          changed_when: false
+        
+        - name: "SUMMARY | Check Docker removed"
+          command: which docker
+          register: check_docker
+          ignore_errors: true
+          changed_when: false
+        
+        - name: "SUMMARY | Check K3s removed"
+          command: which k3s
+          register: check_k3s
+          ignore_errors: true
+          changed_when: false
+        
+        - name: "SUMMARY | Check uv removed"
+          stat:
+            path: "{{ actual_user_home }}/.cargo/bin/uv"
+          register: check_uv
+      tags: always
+    
+    - name: "SUMMARY | Display cleanup summary"
+      debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          🧹 Cleanup Complete!
+          ═══════════════════════════════════════════════════════════════
+          
+          Target User: {{ actual_user }}
+          
+          ✓ Tailscale:  {{ 'REMOVED' if check_tailscale.rc != 0 else '⚠️  Still present' }}
+          ✓ Docker:     {{ 'REMOVED' if check_docker.rc != 0 else '⚠️  Still present' }}
+          ✓ K3s:        {{ 'REMOVED' if check_k3s.rc != 0 else '⚠️  Still present' }}
+          ✓ uv-python:  {{ 'REMOVED' if not check_uv.stat.exists else '⚠️  Still present' }}
+          
+          ═══════════════════════════════════════════════════════════════
+          📝 Post-Cleanup Actions:
+          ═══════════════════════════════════════════════════════════════
+          
+          1. Log out and back in to refresh group memberships
+          2. Verify no Docker containers are running: docker ps
+          3. Check disk space reclaimed: df -h
+          4. Reboot if you want a completely clean state: sudo reboot
+          
+          ═══════════════════════════════════════════════════════════════
+          💾 System State:
+          ═══════════════════════════════════════════════════════════════
+          
+          All installed components have been removed for user {{ actual_user }}.
+          Configuration files have been cleaned up.
+          System should be in pre-installation state.
+          
+          To reinstall, run: ansible-playbook -i inventory.ini setup-playbook.yml
+          
+          ═══════════════════════════════════════════════════════════════
+      tags: always
