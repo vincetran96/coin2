@@ -60,6 +60,8 @@ chmod +x scripts/kafka-init.sh
 - *Jar execution file to export data*
   - https://repo.maven.apache.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
 #### Setup cluster
+See `build/monitoring/.mnt/prometheus/prometheus.example.yml` and rename the file.
+
 ```bash
 docker compose -f build/monitoring.docker-compose.yaml up --force-recreate -d
 ```
@@ -82,7 +84,8 @@ The database can be ClickHouse, etc. To get started, see [DATABASE](docs/DATABAS
   docker compose -f build/clickhouse.docker-compose.yaml up --force-recreate -d
 
   # To shutdown server
-  docker rm -f ch-db
+  docker compose -f build/clickhouse.docker-compose.yaml down -v
+  docker rm -f ch-server
   ```
 ## Build Coin app Docker image
 ```bash
