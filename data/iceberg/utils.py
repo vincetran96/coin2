@@ -41,6 +41,12 @@ def preview_table(namespace: str, tbl_name: str) -> None:
         preview = table.scan(limit=5).to_pandas()
         logging.info("\nSample rows (up to 5):")
         logging.info(preview)
+
+        # Partition spec
+        logging.info("\nCurrent partition spec:")
+        for pf in table.spec().fields:
+            logging.info(f"- name={pf.name}, source_id={pf.source_id}, field_id={pf.field_id}, transform={pf.transform}")
+
     except Exception as exc:
         logging.warning(f"Failed to preview table {tbl_identifier}: {exc}")
 
