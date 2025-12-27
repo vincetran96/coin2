@@ -22,6 +22,8 @@ class ClickHouseBaseInserter(ClickHouseClient, DataInserter):
         
         Insert data into ClickHouse table
 
+        Note that the practice of inserting native Python types (List[Dict]) is not very efficient.
+
         Args:
             tbl_name (str): The name of the ClickHouse table to insert data into
             data (List[Dict]): The data to be inserted into ClickHouse
