@@ -41,7 +41,7 @@ class ClickHouseClient():
         logging.info("Connecting to ClickHouse...")
         self._con = clickhouse_connection(
             host=Config.os_get(key=OsVariable.CLICKHOUSE_HOST.value),
-            port=int(Config.os_get(key=OsVariable.CLICKHOUSE_NATIVE_PORT.value)),
+            port=Config.os_get(key=OsVariable.CLICKHOUSE_NATIVE_PORT.value),
             username=Config.os_get(key=OsVariable.APP_INSERTER_USER.value),
             password=Config.os_get(key=OsVariable.APP_INSERTER_PASSWORD.value)
         )

@@ -17,13 +17,11 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from daft import col, lit
 
-from app.etl.utils.daft import iter_batches_by_ts
+from common.configs import Config, OsVariable
 from common.consts import LOG_FORMAT
 from data.clickhouse.base_executor import ClickHouseBaseExecutor
 from data.clickhouse.base_inserter import ClickHouseBaseInserter
-from models.consts import CHG_TS_COL
 from models.iceberg.ohlcv.slv.binance import BinanceOHLCVSlv
-
 
 # TODO: I don't think clickhouse-driver does NOT support timezone-aware datetimes
 
@@ -44,7 +42,7 @@ CH_TARGET_FIELDS = [
     "low",
     "close",
     "volume",
-    CHG_TS_COL,
+    "src_change_tstamp",
 ]
 
 # Job information
@@ -56,27 +54,19 @@ DEST_IDENTIFIER = CH_TARGET_TABLE
 # Incremental settings
 LOOKBACK = timedelta(minutes=15)
 TS_BATCH_STEP = timedelta(minutes=30)
-DF_BATCHSIZE = 200000
+DF_BATCHSIZE = 1_000_000
 
 
-def _arrow_table_to_rows(tbl: pa.Table) -> List[Dict[str, Any]]:
-    """Convert a PyArrow Table to list-of-dicts, normalizing datetimes for ClickHouse
-    """
-    # Select only the columns we expect to mirror into ClickHouse
-    tbl = tbl.select([f for f in CH_TARGET_FIELDS if f in tbl.column_names])
-    return tbl.to_pylist()
-
-
-def _get_last_change_tstamp(ch: ClickHouseBaseExecutor, job_name: str) -> Optional[datetime]:
+def _get_last_src_change_tstamp(ch_executor: ClickHouseBaseExecutor, job_name: str) -> Optional[datetime]:
     """Return last watermark stored in ClickHouse
     """
-    rows_any = ch.execute(
+    rows_any = ch_executor.execute(
         f"""
-        SELECT last__change_tstamp
-        FROM {CH_ETL_STATE_TABLE}
-        WHERE job_name = %(job_name)s
-        ORDER BY _insert_tstamp DESC
-        LIMIT 1
+            SELECT last_src_change_tstamp
+            FROM {CH_ETL_STATE_TABLE}
+            WHERE job_name = %(job_name)s
+            ORDER BY _change_tstamp DESC
+            LIMIT 1
         """,
         params={"job_name": job_name},
     )
@@ -84,7 +74,9 @@ def _get_last_change_tstamp(ch: ClickHouseBaseExecutor, job_name: str) -> Option
         return None
     if not rows_any[0]:
         return None
-    ts = rows_any[0][0]
+    if not rows_any[0][0]:
+        return None
+    ts = rows_any[0][0][0]
     return ts if isinstance(ts, datetime) else None
 
 
@@ -97,55 +89,57 @@ if __name__ == "__main__":
         with open(ETL_STATE_MODEL_PATH, "r") as infile:
             ch_executor.execute(infile.read())
 
-        last_ts = _get_last_change_tstamp(ch_executor, JOB_NAME)
+        last_ts = _get_last_src_change_tstamp(ch_executor, JOB_NAME)
 
+    read_src_from = None
     if last_ts is None:
         logging.info("No existing ETL state found; will backfill from all available Silver data.")
-        read_src_from = None
     else:
         read_src_from = last_ts - LOOKBACK
-        logging.info(f"Last watermark: {last_ts}; reading from (watermark - lookback): {read_src_from}")
+        logging.info(f"Last source watermark: {last_ts}; reading from (watermark - lookback): {read_src_from}")
 
     slv_model = BinanceOHLCVSlv()
     slv_model.load_table()
     slv_df = daft.read_iceberg(slv_model.tbl_object)
+    delta_df = slv_df
 
-    # Incremental filter
+    # Incremental filter: we only filter the delta DF if there is a last watermark
     if read_src_from is not None:
         logging.info(f"Filtering from {read_src_from}, where timezone is {read_src_from.tzinfo}")
-        slv_df = slv_df.filter(col(CHG_TS_COL) >= lit(read_src_from))
+        delta_df = delta_df.filter(col("src_change_tstamp") >= lit(read_src_from))
 
-    # Process in time-sliced batches based on _change_tstamp
-    # As we must find the maximum seen _change_tstamp, we need to use to_arrow_iter to batch the DataFrame
-    max__change_tstamp: Optional[datetime] = None
-    with ClickHouseBaseInserter() as ch_inserter:
-        for ts_batch in iter_batches_by_ts(input_df=slv_df, ts_col=CHG_TS_COL, step=TS_BATCH_STEP):
-            batch_df = ts_batch.df
-            batch_df = batch_df.into_batches(DF_BATCHSIZE)
-            for rb in batch_df.to_arrow_iter():
-                pa_tbl = pa.Table.from_batches([rb])
+    # Since we have MergeTree on ClickHouse, we may not need to iter by timestamp here
+    # Instead, just iter by partition to control resource usage
+    max_src_change_tstamp: Optional[datetime] = None
+    delta_df = delta_df.into_batches(DF_BATCHSIZE)
 
-                if pa_tbl.num_rows == 0:
-                    continue
+    # Find the max src_change_tstamp in the delta DataFrame
+    # Using Daft agg is simpler but not sure about memory efficiency
+    # src_chg_tstamp_df = delta_df.agg(col("src_change_tstamp").max()).collect()
+    # max_src_change_tstamp = src_chg_tstamp_df.to_pydict()["src_change_tstamp"][0]
+    for part in delta_df.select("src_change_tstamp").iter_partitions():
+        pa_tbl = part.to_arrow()
 
-                # Track max watermark in this chunk
-                chunk_max = (pc.max(pa_tbl[CHG_TS_COL]).as_py() if CHG_TS_COL in pa_tbl.column_names else None)
-                if isinstance(chunk_max, datetime):
-                    # chunk_max = _to_ch_naive_utc(chunk_max)
-                    max__change_tstamp = (
-                        chunk_max if max__change_tstamp is None or chunk_max > max__change_tstamp 
-                        else max__change_tstamp
-                    )
+        if pa_tbl.num_rows == 0:
+            continue
 
-                ch_inserter.insert(
-                    tbl_name=CH_TARGET_TABLE,
-                    data=_arrow_table_to_rows(pa_tbl),
-                    field_names=CH_TARGET_FIELDS,
-                )
+        chunk_max = pc.max(pa_tbl["src_change_tstamp"]).as_py()
+        if isinstance(chunk_max, datetime):
+            if max_src_change_tstamp is None or chunk_max > max_src_change_tstamp:
+                max_src_change_tstamp = chunk_max
 
-    if max__change_tstamp is None:
+    if not max_src_change_tstamp:
         logging.info("No rows found to load into ClickHouse; exiting.")
         sys.exit(0)
+
+    delta_df.write_clickhouse(
+        table=CH_TARGET_TABLE,
+        host=Config.os_get(key=OsVariable.CLICKHOUSE_HOST.value),
+        port=int(Config.os_get(key=OsVariable.CLICKHOUSE_HTTP_PORT.value)),
+        user=Config.os_get(key=OsVariable.APP_INSERTER_USER.value),
+        password=Config.os_get(key=OsVariable.APP_INSERTER_PASSWORD.value),
+        database="binance",
+    )
 
     # Write ETL state
     # TODO: If this part fails, we need a mechanism to ensure correct ETL data is processed
@@ -154,8 +148,8 @@ if __name__ == "__main__":
         "source": SOURCE,
         "source_identifier": SOURCE_IDENTIFIER,
         "dest_identifier": DEST_IDENTIFIER,
-        "last__change_tstamp": max__change_tstamp,
-        "_insert_tstamp": datetime.now(timezone.utc),
+        "last_src_change_tstamp": max_src_change_tstamp,
+        # CHG_TS_COL: datetime.now(timezone.utc),  # Comment out for now to see if it merges using an auto column
     }
     with ClickHouseBaseInserter() as ch_inserter:
         ch_inserter.insert(
@@ -164,4 +158,4 @@ if __name__ == "__main__":
             field_names=list(state_row.keys()),
         )
 
-    logging.info("Updated ETL state watermark to %s", max__change_tstamp)
+    logging.info("Updated ETL state watermark to %s", max_src_change_tstamp)

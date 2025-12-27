@@ -105,7 +105,10 @@ def iter_batches_by_ts(
     start: Optional[datetime] = None,
     end: Optional[datetime] = None,
 ) -> Iterator[TimeBatch]:
-    """Yield batches of input DataFrame where ts_col is in [batch_start, batch_end)
+    """Yield batches of input DataFrame where ts_col is in `[batch_start, batch_end)`
+
+    Useful for upserting into a table that requires a MERGE operation, where
+    we need newer records to arrive later.
 
     Notes:
     - Start/end default to the min/max in delta_df
