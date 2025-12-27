@@ -133,6 +133,10 @@ kubectl apply \
 59000, 59001: MinIO
 58181: Iceberg REST server
 ```
+## Database
+```
+48123, 49000, 49009: ClickHouse
+```
 
 
 # Quick scripts
