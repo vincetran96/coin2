@@ -6,8 +6,9 @@ Create ClickHouse dirs and change the ownership of the mounted dirs:
 sudo mkdir -p build/.mnt/clickhouse/{data,users,log}
 # sudo chown -R $(id -u):$(id -g) build/.mnt/clickhouse
 ```
+See `build/clickhouse/.mnt/users/app-inserter.example.xml` and rename the file.
 
-Add a file `build/clickhouse/.mnt/users/app-inserter.xml` with this content:
+Or add a file `build/clickhouse/.mnt/users/app-inserter.xml` with this content:
 ```xml
 <clickhouse>
   <users>
@@ -25,6 +26,17 @@ Add a file `build/clickhouse/.mnt/users/app-inserter.xml` with this content:
     </app_inserter>
   </users>
 </clickhouse>
+```
+
+Download ClickHouse binary if not already.
+
+Docker stuff
+```bash
+# Start ClickHouse
+docker compose -f build/clickhouse.docker-compose.yaml up --force-recreate -d
+
+# Shutdown ClickHouse
+docker compose -f build/clickhouse.docker-compose.yaml down -v
 ```
 
 Test connection
