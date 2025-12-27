@@ -128,68 +128,68 @@ services:
     # volumes:
     #   - ./jmx-exporter:/usr/share/jmx_exporter/
 
-  # This service depends on the minio service, which is in another docker compose file
-  kafka-connect:
-    # Use a custom image for now
-    # image: confluentinc/cp-kafka-connect:7.6.0
-    image: vincetran96/kafka-connect:test
-    container_name: kafka-connect
-    hostname: kafka-connect
-    depends_on:
-      - coin2-kafka-0
-      - coin2-kafka-1
-      - coin2-kafka-2
-      - schema-registry
-    ports:
-      - "58083:8083"
-    networks:
-      - data-infra
-    environment:
-      CONNECT_BOOTSTRAP_SERVERS: coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092
-      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
-      CONNECT_REST_PORT: 8083
-      CONNECT_GROUP_ID: kafka-connect-group
-      CONNECT_CONFIG_STORAGE_TOPIC: docker-kafka-connect-configs
-      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
-      CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
-      CONNECT_OFFSET_STORAGE_TOPIC: docker-kafka-connect-offsets
-      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
-      CONNECT_STATUS_STORAGE_TOPIC: docker-kafka-connect-status
-      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
-      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
-      # AWS SDK configuration for MinIO (S3-compatible); Must be the same as ones set in MinIO docker compose
-      CONNECT_AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
-      CONNECT_AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
-      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
-      AWS_REGION: us-east-1
-    # Disable volume mounting for now
-    # volumes:
-    #   - ./kafka/.mnt/kafka_connect/components:/usr/share/confluent-hub-components
-    command:
-      - bash
-      - -c
-      - |
-        set -euxo pipefail
-
-        wget --quiet -O /tmp/wait-for https://raw.githubusercontent.com/eficode/wait-for/master/wait-for
-        chmod +x /tmp/wait-for
-        /tmp/wait-for minio:9000 -t 120
-
-        echo "Installing Iceberg Kafka Connect plugin..."
-        
-        # Install Iceberg Kafka Connect plugin
-        confluent-hub install --no-prompt iceberg/iceberg-kafka-connect:1.9.2
-        
-        echo "Starting Kafka Connect..."
-        /etc/confluent/docker/run
-
 # Use external Docker bridge network
 networks:
   data-infra:
     external: true
+
+  # # This service depends on the minio service, which is in another docker compose file
+  # kafka-connect:
+  #   # Use a custom image for now
+  #   # image: confluentinc/cp-kafka-connect:7.6.0
+  #   image: vincetran96/kafka-connect:test
+  #   container_name: kafka-connect
+  #   hostname: kafka-connect
+  #   depends_on:
+  #     - coin2-kafka-0
+  #     - coin2-kafka-1
+  #     - coin2-kafka-2
+  #     - schema-registry
+  #   ports:
+  #     - "58083:8083"
+  #   networks:
+  #     - data-infra
+  #   environment:
+  #     CONNECT_BOOTSTRAP_SERVERS: coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092
+  #     CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+  #     CONNECT_REST_PORT: 8083
+  #     CONNECT_GROUP_ID: kafka-connect-group
+  #     CONNECT_CONFIG_STORAGE_TOPIC: docker-kafka-connect-configs
+  #     CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+  #     CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
+  #     CONNECT_OFFSET_STORAGE_TOPIC: docker-kafka-connect-offsets
+  #     CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+  #     CONNECT_STATUS_STORAGE_TOPIC: docker-kafka-connect-status
+  #     CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+  #     CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+  #     CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+  #     CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+  #     # AWS SDK configuration for MinIO (S3-compatible); Must be the same as ones set in MinIO docker compose
+  #     CONNECT_AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+  #     CONNECT_AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+  #     AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+  #     AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+  #     AWS_REGION: us-east-1
+  #   # Disable volume mounting for now
+  #   # volumes:
+  #   #   - ./kafka/.mnt/kafka_connect/components:/usr/share/confluent-hub-components
+  #   command:
+  #     - bash
+  #     - -c
+  #     - |
+  #       set -euxo pipefail
+
+  #       wget --quiet -O /tmp/wait-for https://raw.githubusercontent.com/eficode/wait-for/master/wait-for
+  #       chmod +x /tmp/wait-for
+  #       /tmp/wait-for minio:9000 -t 120
+
+  #       echo "Installing Iceberg Kafka Connect plugin..."
+        
+  #       # Install Iceberg Kafka Connect plugin
+  #       confluent-hub install --no-prompt iceberg/iceberg-kafka-connect:1.9.2
+        
+  #       echo "Starting Kafka Connect..."
+  #       /etc/confluent/docker/run
 
 
   # connect:
