@@ -30,9 +30,7 @@ def _get_delta_from_brz(
     """Select delta from Bronze to Silver based on change timestamp
     
     Gets the maximum change timestamp from Silver and filters Bronze records
-    where change_tstamp >= max_change_tstamp (incremental processing).
-
-    Note that if we use `>=`, there will always be at least one record in the delta DataFrame.
+    where change_tstamp > max_change_tstamp (incremental processing).
     
     Args:
         brz_df: Daft DataFrame from Bronze table
@@ -51,7 +49,7 @@ def _get_delta_from_brz(
     if (max_src_chg_tstamp_pa.num_rows > 0 and
         max_src_chg_tstamp_pa["max_ts"][0].as_py() is not None):
         max_src_chg_tstamp = max_src_chg_tstamp_pa["max_ts"][0].as_py()
-        delta_df = brz_df.filter(col(CHG_TS_COL) >= max_src_chg_tstamp)
+        delta_df = brz_df.filter(col(CHG_TS_COL) > max_src_chg_tstamp)
         logging.info(f"Max src change_tstamp in Silver: {max_src_chg_tstamp}")
     else:
         logging.info("Silver table exists but is empty")
