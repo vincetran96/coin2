@@ -5,7 +5,7 @@
 import json
 import logging
 from contextlib import closing
-from typing import Any, List
+from typing import List, Optional
 
 from confluent_kafka import Consumer, Producer
 from confluent_kafka.admin import AdminClient, NewTopic
@@ -81,7 +81,7 @@ def create_new_topics(topics: List[str], num_partitions: int, replication_factor
             logging.error("Failed to create topic {}: {}".format(topic, exc))
 
 
-def send_to_kafka(producer: Producer, topic: str, data_list: List[dict], data_key: str = None):
+def send_to_kafka(producer: Producer, topic: str, data_list: List[dict], data_key: Optional[str]):
     """Send data (as a list of dict) to Kafka
 
     Source: https://github.com/confluentinc/confluent-kafka-python
