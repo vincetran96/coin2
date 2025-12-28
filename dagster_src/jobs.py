@@ -9,7 +9,7 @@ BINANCE_OHLCV_SLV_CONCURR_TAG = {"concurrency_group": "binance_ohlcv_slv"}
 
 
 binance_ohlcv_job = define_asset_job(
-    name="binance_ohlcv_job",
+    name="binance_ohlcv",
     selection=AssetSelection.keys(
         AssetKey(["binance_ohlcv_brz"]),
         AssetKey(["binance_ohlcv_slv"]),
@@ -18,7 +18,7 @@ binance_ohlcv_job = define_asset_job(
 )
 
 binance_ohlcv_brz_job = define_asset_job(
-    name="binance_ohlcv_brz_job",
+    name="binance_ohlcv_brz",
     selection=AssetSelection.keys(AssetKey(["binance_ohlcv_brz"])),
 
     # Default config for this job, regardless of how it's triggered (schedule/manual/sensor).
@@ -32,7 +32,7 @@ binance_ohlcv_brz_job = define_asset_job(
 )
 
 binance_ohlcv_slv_ch_job = define_asset_job(
-    name="binance_ohlcv_slv_ch_job",
+    name="binance_ohlcv_slv_ch",
     selection=AssetSelection.keys(
         AssetKey(["binance_ohlcv_slv"]), AssetKey(["binance_ohlcv_clickhouse"]) 
     ),

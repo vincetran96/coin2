@@ -39,10 +39,10 @@ def binance_ohlcv_slv_ch_5m(context):
         DagsterRunStatus.CANCELING,
     ]
     existing = context.instance.get_runs(
-        RunsFilter(job_name="binance_ohlcv_slv_ch_job", statuses=active_statuses),
+        RunsFilter(job_name="binance_ohlcv_slv_ch", statuses=active_statuses),
         limit=1,
     )
     if existing:
-        return SkipReason("Skipping: a prior binance_ohlcv_slv_ch_job run is still active.")
+        return SkipReason("Skipping: a prior `binance_ohlcv_slv_ch` job run is still active.")
 
     return RunRequest(tags=BINANCE_OHLCV_SLV_CONCURR_TAG)
