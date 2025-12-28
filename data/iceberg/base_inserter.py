@@ -9,7 +9,6 @@ import pyarrow as pa
 from common.catalog import get_catalog
 from data.iceberg.utils import to_arrow_table, add_audit_columns
 from data.interfaces import DataInserter
-from models.consts import CHG_TS_COL
 
 
 class IcebergBaseInserter(DataInserter):
@@ -36,6 +35,8 @@ class IcebergBaseInserter(DataInserter):
         """Private method
 
         Insert data into Iceberg table
+
+        Before inserting, we add audit columns to the data.
 
         Args:
             tbl_name (str): Identifier of the target table
