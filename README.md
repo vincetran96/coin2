@@ -112,6 +112,8 @@ kubectl apply \
     -f k8s/coin2-etl.yaml \
     -f k8s/coin2-volume.yaml
 ```
+### Orchestration
+Orchestration is a part of the Coin app. See [ORCHESTRATION](docs/ORCHESTRATION.md).
 
 
 # Summary of exposed ports
