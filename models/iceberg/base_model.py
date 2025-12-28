@@ -2,6 +2,7 @@
 """
 import logging
 
+from pyiceberg.catalog import Catalog
 from pyiceberg.partitioning import PARTITION_FIELD_ID_START, PartitionField, PartitionSpec, UNPARTITIONED_PARTITION_SPEC
 from pyiceberg.schema import Schema
 from pyiceberg.table import Table
@@ -15,7 +16,8 @@ class BaseModel:
     def __init__(
         self,
         namespace: str,
-        table_name: str
+        table_name: str,
+        catalog: Catalog
     ) -> None:
         """
         Args:
@@ -34,7 +36,7 @@ class BaseModel:
         # Optional: set in subclass to define write sort order
         self.sort_order: SortOrder = UNSORTED_SORT_ORDER
 
-        self.catalog = get_catalog()
+        self.catalog = catalog or get_catalog()
         self.tbl_object: Table | None = None
 
     @property

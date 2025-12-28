@@ -1,4 +1,5 @@
 import pyiceberg.types as types
+from pyiceberg.catalog import Catalog
 from pyiceberg.schema import Schema
 
 from models.consts import CHG_TS_COL
@@ -12,8 +13,8 @@ class BinanceOHLCVSlv(BaseModel):
     """
     Model representing the Binance OHLCV Silver table.
     """
-    def __init__(self) -> None:
-        super().__init__(namespace=NAMESPACE, table_name="ohlcv_slv")
+    def __init__(self, catalog: Catalog) -> None:
+        super().__init__(namespace=NAMESPACE, table_name="ohlcv_slv", catalog=catalog)
 
         self.tbl_schema = Schema(
             types.NestedField(field_id=1, name="exchange", field_type=types.StringType(), required=True),
