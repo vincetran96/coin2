@@ -28,6 +28,9 @@ temp/
 build/clickhouse/.mnt/data
 build/clickhouse/.mnt/log
 
+# Dagster local instance storage (run history, schedule state, etc.)
+.dagster/
+
 # .gitignore template
 # Byte-compiled / optimized / DLL files
 __pycache__/
