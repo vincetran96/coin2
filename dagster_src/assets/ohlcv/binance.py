@@ -59,6 +59,7 @@ def binance_ohlcv_clickhouse(
     catalog = iceberg.get_catalog()
     ch_executor = clickhouse.get_executor()
     
-    run_slv_to_clickhouse(catalog=catalog, ch_executor=ch_executor)
+    with ch_executor as executor:
+        run_slv_to_clickhouse(catalog=catalog, ch_executor=executor)
     
     context.log.info("ClickHouse transformation complete!")
