@@ -3,7 +3,7 @@ from dagster import AssetKey, AssetSelection, define_asset_job
 from dagster_src.consts import BINANCE_OHLCV_BRZ_MAX_RUNTIME
 
 
-# Attach a tag to all runs of this job so you can enforce global concurrency in Dagster instance config
+# Attach a tag to all runs of this job so we can enforce global concurrency in Dagster instance config
 BINANCE_OHLCV_BRZ_CONCURR_TAG = {"concurrency_group": "binance_ohlcv_brz_cc_gr"}
 BINANCE_OHLCV_SLV_CONCURR_TAG = {"concurrency_group": "binance_ohlcv_slv_cc_gr"}
 
