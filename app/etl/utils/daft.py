@@ -134,3 +134,27 @@ def iter_batches_by_ts(
         lower = nxt
 
 # Function related to batching DataFrame with a timestamp column
+
+
+def get_last_src_change_tstamp(
+    etl_state_df: daft.DataFrame,
+    job_name: str,
+) -> datetime | None:
+    """Read `last_src_change_tstamp` from the Iceberg ETL state table for a job
+
+    Note:
+        ETL state table is expected to hold at most 1 row per job_name (via Iceberg identifier_field_ids).
+
+    Returns:
+        datetime | None
+    """
+    state_pa = (
+        etl_state_df.filter(col("job_name") == lit(job_name))
+        .select("last_src_change_tstamp")
+        .limit(1)
+        .to_arrow()
+    )
+    if state_pa.num_rows == 0:
+        return None
+    ts = state_pa["last_src_change_tstamp"][0].as_py()
+    return ts if isinstance(ts, datetime) else None
