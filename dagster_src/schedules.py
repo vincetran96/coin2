@@ -17,8 +17,8 @@ def binance_ohlcv_brz_20m(context):
 
     Overlapping runs are allowed for this schedule.
     """
-    # Job default run config lives in `dagster_src/jobs.py` (single source of truth).
-    # `run_config` can be used here to override the default config.
+    # Job default run config lives in `dagster_src/jobs.py` (single source of truth)
+    # `run_config` can be used here to override the default config
     return {}
 
 
