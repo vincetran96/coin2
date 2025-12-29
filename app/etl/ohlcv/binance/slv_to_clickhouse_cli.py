@@ -133,7 +133,7 @@ def run_slv_to_clickhouse(catalog: Catalog, ch_executor: ClickHouseBaseExecutor)
 
     if not max_src_change_tstamp:
         logging.info("No rows found to load into ClickHouse; exiting.")
-        sys.exit(0)
+        return
 
     delta_df.write_clickhouse(
         table=CH_TARGET_TABLE,
@@ -161,7 +161,7 @@ def run_slv_to_clickhouse(catalog: Catalog, ch_executor: ClickHouseBaseExecutor)
             field_names=list(state_row.keys()),
         )
 
-    logging.info("Updated ETL state watermark to %s", max_src_change_tstamp)
+    logging.info(f"Updated ETL state watermark to: {max_src_change_tstamp}")
 
 
 if __name__ == "__main__":

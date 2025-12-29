@@ -34,7 +34,7 @@ def run_raw_to_brz(catalog: Catalog, *, max_runtime: Optional[float] = None) -> 
         wait_timeout=60,
         group_id=INSERTER_KAFKA_GROUP_ID,
         target_tbl=brz_tbl_model.tbl_identifier,
-        db_inserter=IcebergBaseInserter(mode="append"),
+        db_inserter=IcebergBaseInserter(catalog=catalog, mode="append"),
         extract_fields=["exchange", "symbol", "timestamp", "open_", "high_", "low_", "close_", "volume_"],
         msg_processor=json.loads
     )
