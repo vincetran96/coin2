@@ -1,3 +1,5 @@
+"""Dagster top-leveldefinitions
+"""
 from dagster import Definitions
 
 from dagster_src.assets.ohlcv.binance import binance_ohlcv_brz, binance_ohlcv_slv, binance_ohlcv_clickhouse

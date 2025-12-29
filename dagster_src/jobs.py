@@ -1,3 +1,5 @@
+"""Dagster jobs
+"""
 from dagster import AssetKey, AssetSelection, define_asset_job
 
 from dagster_src.consts import BINANCE_OHLCV_BRZ_MAX_RUNTIME
