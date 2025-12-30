@@ -1,0 +1,94 @@
+services:
+  dagster-postgres:
+    image: postgres:16.5
+    container_name: dagster-postgres
+    hostname: dagster-postgres
+    restart: unless-stopped
+    # Maybe no need to publish the ports yet
+    # ports:
+    #   - "45432:5432"
+    networks:
+      - data-infra
+    # TODO: Add volume for persistence
+    environment:
+      POSTGRES_USER: ${DAGSTER_PG_USER}
+      POSTGRES_PASSWORD: ${DAGSTER_PG_PASSWORD}
+      POSTGRES_DB: ${DAGSTER_PG_DB}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 8s
+      retries: 10
+      start_period: 30s
+
+  dagster-coin2-app:
+    image: vincetran96/coin2:test
+    container_name: dagster-coin2-app
+    hostname: dagster-coin2-app
+    restart: unless-stopped
+    networks:
+      - data-infra
+    env_file:
+      - .env
+    environment:
+      DAGSTER_CURRENT_IMAGE: vincetran96/coin2:test
+
+  dagster-webserver:
+    image: vincetran96/coin2:test
+    container_name: dagster-webserver
+    hostname: dagster-webserver
+    restart: unless-stopped
+    depends_on:
+      dagster-postgres:
+        condition: service_healthy
+      dagster-coin2-app:
+        condition: service_started
+    ports:
+      - "43000:3000"
+    networks:
+      - data-infra
+    environment:
+      DAGSTER_PG_USER: ${DAGSTER_PG_USER}
+      DAGSTER_PG_PASSWORD: ${DAGSTER_PG_PASSWORD}
+      DAGSTER_PG_DB: ${DAGSTER_PG_DB}
+    entrypoint:
+      - dagster-webserver
+      - -h
+      - '0.0.0.0'
+      - -p
+      - '3000'
+      - -w
+      - /opt/coin2/dagster_src/workspace.yaml
+    volumes: # Make docker client accessible so we can terminate containers from the webserver
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/io_manager_storage:/tmp/io_manager_storage
+
+  dagster-daemon:
+    image: vincetran96/coin2:test
+    container_name: dagster-daemon
+    hostname: dagster-daemon
+    restart: on-failure
+    depends_on:
+      dagster-postgres:
+        condition: service_healthy
+      dagster-coin2-app:
+        condition: service_started
+    networks:
+      - data-infra
+    environment:
+      DAGSTER_PG_USER: ${DAGSTER_PG_USER}
+      DAGSTER_PG_PASSWORD: ${DAGSTER_PG_PASSWORD}
+      DAGSTER_PG_DB: ${DAGSTER_PG_DB}
+    entrypoint:
+      - dagster-daemon
+      - run
+      - -w
+      - /opt/coin2/dagster_src/workspace.yaml
+    volumes: # Make docker client accessible so we can launch containers using host docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/io_manager_storage:/tmp/io_manager_storage
+
+# Use external Docker bridge network
+networks:
+  data-infra:
+    external: true
