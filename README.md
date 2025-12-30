@@ -87,7 +87,7 @@ The database can be ClickHouse, etc. To get started, see [DATABASE](docs/DATABAS
   docker compose -f build/clickhouse.docker-compose.yaml down -v
   docker rm -f ch-server
   ```
-## Build Coin app Docker image
+## Coin2 app
 ```bash
 # This build does NOT use cache
 chmod +x build/coin2.build.sh
@@ -96,15 +96,15 @@ chmod +x build/coin2.build.sh
 chmod +x build/coin2.local-k8s-repo.sh
 ./build/coin2.local-k8s-repo.sh vincetran96/coin2:test
 ```
-## Deploy Coin app k8s cluster
-### K8s configs
+### Deploy option 1: Deploy Coin app k8s cluster
+#### K8s configs
 ```bash
 kubectl create ns coin2
 kubectl create -f k8s/coin2-configmap.yaml
 ```
-### Update some configs
+#### Update some configs
 Update appropriate values in `k8s/coin2-volume.example.yaml` and rename the file.
-### Start the app
+#### Start the app
 ```bash
 kubectl apply \
     -f k8s/coin2-heartbeat.yaml \
@@ -112,8 +112,14 @@ kubectl apply \
     -f k8s/coin2-etl.yaml \
     -f k8s/coin2-volume.yaml
 ```
-### Orchestration
-Orchestration is a part of the Coin app. See [ORCHESTRATION](docs/ORCHESTRATION.md).
+### Deploy option 2: Deploy Coin app Docker Compose
+```bash
+docker compose -f build/coin2.dagster.docker-compose.yaml up --force-recreate -d
+```
+## Orchestration
+Orchestration is a part of the Coin app. We currently use Dagster framework. See [ORCHESTRATION](docs/ORCHESTRATION.md).
+
+If deploy using Docker Compose, all orchestration services use the same coin app Docker image.
 
 
 # Summary of exposed ports
@@ -138,6 +144,11 @@ Orchestration is a part of the Coin app. See [ORCHESTRATION](docs/ORCHESTRATION.
 ## Database
 ```
 48123, 49000, 49009: ClickHouse
+```
+## Orchestration
+```
+43000: Dagster webserver
+
 ```
 
 
