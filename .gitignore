@@ -30,6 +30,7 @@ build/clickhouse/.mnt/log
 
 # Dagster local instance storage (run history, schedule state, etc.)
 .dagster/
+dagster_src/.*/
 
 # .gitignore template
 # Byte-compiled / optimized / DLL files

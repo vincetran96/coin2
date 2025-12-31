@@ -33,7 +33,7 @@ services:
       - .env
     environment:
       DAGSTER_CURRENT_IMAGE: vincetran96/coin2:test
-    command: ["dagster", "code-server", "start", "-h", "0.0.0.0", "-p", "4000", "-f", "dagster_src/definitions.py"]
+    command: ["dagster", "code-server", "start", "-h", "0.0.0.0", "-p", "4000", "-m", "dagster_src"]
     healthcheck:
       test: ["CMD-SHELL", "dagster api grpc-health-check -p 4000"]
       interval: 3s
@@ -69,7 +69,8 @@ services:
       - "3000"
       - -w
       - /opt/coin2/dagster_src/workspace.yaml
-    volumes: # Make docker client accessible so we can terminate containers from the webserver
+    # Make docker client accessible so we can terminate containers from the webserver
+    volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/io_manager_storage:/tmp/io_manager_storage
       - ../dagster_src/:/opt/coin2/dagster_src/
@@ -103,7 +104,8 @@ services:
       - run
       - -w
       - /opt/coin2/dagster_src/workspace.yaml
-    volumes: # Make docker client accessible so we can launch containers using host docker
+    # Make docker client accessible so we can launch containers using host docker
+    volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/io_manager_storage:/tmp/io_manager_storage
       - ../dagster_src/:/opt/coin2/dagster_src/
