@@ -38,7 +38,7 @@ Make sure we have a binary copy of Kafka executables.
     --bootstrap-server localhost:9094 \
     --group inserter-consumer --describe --offsets
 
-# Reset offset
+# Reset offset for a consumer group
 ./bin/kafka/bin/kafka-consumer-groups.sh \
     --bootstrap-server localhost:9094 \
     --group inserter-consumer --reset-offsets --to-earliest --all-topics --execute
