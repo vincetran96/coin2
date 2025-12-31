@@ -9,17 +9,18 @@ services:
     #   - "45432:5432"
     networks:
       - data-infra
-    # TODO: Add volume for persistence
     environment:
       POSTGRES_USER: ${DAGSTER_PG_USER}
       POSTGRES_PASSWORD: ${DAGSTER_PG_PASSWORD}
       POSTGRES_DB: ${DAGSTER_PG_DB}
+    volumes:
+      - dagster-pg-data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 8s
-      retries: 10
       start_period: 30s
+      retries: 10
 
   dagster-coin2-app:
     image: vincetran96/coin2:test
@@ -32,6 +33,13 @@ services:
       - .env
     environment:
       DAGSTER_CURRENT_IMAGE: vincetran96/coin2:test
+    command: ["dagster", "code-server", "start", "-h", "0.0.0.0", "-p", "4000", "-f", "dagster_src/definitions.py"]
+    healthcheck:
+      test: ["CMD-SHELL", "dagster api grpc-health-check -p 4000"]
+      interval: 3s
+      timeout: 3s
+      start_period: 3s
+      retries: 20
 
   dagster-webserver:
     image: vincetran96/coin2:test
@@ -47,6 +55,8 @@ services:
       - "43000:3000"
     networks:
       - data-infra
+    env_file:
+      - .env
     environment:
       DAGSTER_PG_USER: ${DAGSTER_PG_USER}
       DAGSTER_PG_PASSWORD: ${DAGSTER_PG_PASSWORD}
@@ -54,14 +64,15 @@ services:
     entrypoint:
       - dagster-webserver
       - -h
-      - '0.0.0.0'
+      - "0.0.0.0"
       - -p
-      - '3000'
+      - "3000"
       - -w
       - /opt/coin2/dagster_src/workspace.yaml
     volumes: # Make docker client accessible so we can terminate containers from the webserver
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/io_manager_storage:/tmp/io_manager_storage
+      - ../dagster_src/:/opt/coin2/dagster_src/
 
   dagster-daemon:
     image: vincetran96/coin2:test
@@ -75,10 +86,18 @@ services:
         condition: service_started
     networks:
       - data-infra
+    env_file:
+      - .env
     environment:
-      DAGSTER_PG_USER: ${DAGSTER_PG_USER}
-      DAGSTER_PG_PASSWORD: ${DAGSTER_PG_PASSWORD}
-      DAGSTER_PG_DB: ${DAGSTER_PG_DB}
+      # Override host/Tailscale endpoints from .env with Docker network endpoints for run containers
+      # (Dagster DockerRunLauncher passes these env vars into launched run containers)
+      KAFKA_BOOTSTRAP_SERVER: coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092
+      KAFKA_SCHEMA_REGISTRY_ENDPOINT: http://schema-registry:8081
+      MINIO_ENDPOINT: http://minio:9000
+      CATALOG_ENDPOINT: http://iceberg-rest:8181
+      CLICKHOUSE_HOST: ch-server
+      CLICKHOUSE_NATIVE_PORT: 9000
+      CLICKHOUSE_HTTP_PORT: 8123
     entrypoint:
       - dagster-daemon
       - run
@@ -87,8 +106,12 @@ services:
     volumes: # Make docker client accessible so we can launch containers using host docker
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/io_manager_storage:/tmp/io_manager_storage
+      - ../dagster_src/:/opt/coin2/dagster_src/
 
 # Use external Docker bridge network
 networks:
   data-infra:
     external: true
+
+volumes:
+  dagster-pg-data:
