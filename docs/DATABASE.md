@@ -8,26 +8,6 @@ sudo mkdir -p build/.mnt/clickhouse/{data,users,log}
 ```
 See `build/clickhouse/.mnt/users/app-inserter.example.xml` and rename the file.
 
-Or add a file `build/clickhouse/.mnt/users/app-inserter.xml` with this content:
-```xml
-<clickhouse>
-  <users>
-    <app_inserter>
-      <password>ChangeMe123</password>
-
-      <!-- restrict networks to host/docker bridge; adjust to your LAN/Tailscale as needed -->
-      <networks>
-        <ip>::/0</ip>
-        <!-- <ip>127.0.0.1/32</ip> -->
-      </networks>
-
-      <profile>default</profile>
-      <quota>default</quota>
-    </app_inserter>
-  </users>
-</clickhouse>
-```
-
 Download ClickHouse binary if not already.
 
 Docker stuff

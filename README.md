@@ -78,15 +78,9 @@ docker compose -f build/minio.docker-compose.yaml up --force-recreate -d
 ```
 ## Database
 The database can be ClickHouse, etc. To get started, see [DATABASE](docs/DATABASE.md).
-- ClickHouse quick commands:
-  ```bash
-  # To start server
-  docker compose -f build/clickhouse.docker-compose.yaml up --force-recreate -d
-
-  # To shutdown server
-  docker compose -f build/clickhouse.docker-compose.yaml down -v
-  docker rm -f ch-server
-  ```
+```bash
+docker compose -f build/clickhouse.docker-compose.yaml up --force-recreate -d
+```
 ## Coin2 app
 ```bash
 # This build does NOT use cache
@@ -114,6 +108,10 @@ kubectl apply \
 ```
 ### Deploy option 2: Deploy Coin app Docker Compose
 ```bash
+# Collector
+docker compose -f build/coin2.collector.docker-compose.yaml up --force-recreate -d
+
+# Main app and Dagster orchestration
 docker compose -f build/coin2.dagster.docker-compose.yaml up --force-recreate -d
 ```
 ## Orchestration
