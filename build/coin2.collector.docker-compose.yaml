@@ -1,6 +1,6 @@
 services:
   # Init container to create Kafka topics
-  coin2-collector-init:
+  collector-init:
     image: vincetran96/coin2:test
     container_name: coin2-collector-init
     hostname: coin2-collector-init
@@ -13,10 +13,10 @@ services:
       KAFKA_BOOTSTRAP_SERVER: coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092
     command: ["uv", "run", "-m", "app.collector.init"]
 
-  coin2-collector:
+  collector-binance:
     image: vincetran96/coin2:test
-    container_name: coin2-collector
-    hostname: coin2-collector
+    container_name: coin2-collector-binance
+    hostname: coin2-collector-binance
     restart: unless-stopped
     depends_on:
       coin2-collector-init:
