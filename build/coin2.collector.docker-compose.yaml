@@ -1,0 +1,17 @@
+services:
+  coin2-collector:
+    image: vincetran96/coin2:test
+    container_name: coin2-collector
+    hostname: coin2-collector
+    restart: unless-stopped
+    networks:
+      - data-infra
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092
+    command: ["uv", "run", "-m", "app.collector.binance"]
+
+networks:
+  data-infra:
+    external: true
