@@ -22,10 +22,10 @@ services:
       start_period: 30s
       retries: 10
 
-  dagster-coin2-app:
+  dagster-coin2-codeserver:
     image: vincetran96/coin2:test
-    container_name: dagster-coin2-app
-    hostname: dagster-coin2-app
+    container_name: dagster-coin2-codeserver
+    hostname: dagster-coin2-codeserver
     restart: unless-stopped
     networks:
       - data-infra
