@@ -4,3 +4,4 @@ docker_data
 k8s
 logs
 **/__pycache__/
+.venv

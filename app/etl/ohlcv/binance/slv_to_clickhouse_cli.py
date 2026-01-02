@@ -16,9 +16,11 @@ import daft
 import pyarrow as pa
 import pyarrow.compute as pc
 from daft import col, lit
+from pyiceberg.catalog import Catalog
 
 from common.configs import Config, OsVariable
 from common.consts import LOG_FORMAT
+from common.catalog import get_catalog
 from data.clickhouse.base_executor import ClickHouseBaseExecutor
 from data.clickhouse.base_inserter import ClickHouseBaseInserter
 from models.iceberg.ohlcv.slv.binance import BinanceOHLCVSlv
@@ -80,16 +82,17 @@ def _get_last_src_change_tstamp(ch_executor: ClickHouseBaseExecutor, job_name: s
     return ts if isinstance(ts, datetime) else None
 
 
-if __name__ == "__main__":
-    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
+def run_slv_to_clickhouse(catalog: Catalog, ch_executor: ClickHouseBaseExecutor) -> None:
+    """Main function to run the ETL process
+    """
+    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO, stream=sys.stdout)
 
-    with ClickHouseBaseExecutor() as ch_executor:
-        with open(BINANCE_OHLCV_SLV_MODEL_PATH, "r") as infile:
-            ch_executor.execute(infile.read())
-        with open(ETL_STATE_MODEL_PATH, "r") as infile:
-            ch_executor.execute(infile.read())
+    with open(BINANCE_OHLCV_SLV_MODEL_PATH, "r") as infile:
+        ch_executor.execute(infile.read())
+    with open(ETL_STATE_MODEL_PATH, "r") as infile:
+        ch_executor.execute(infile.read())
 
-        last_ts = _get_last_src_change_tstamp(ch_executor, JOB_NAME)
+    last_ts = _get_last_src_change_tstamp(ch_executor, JOB_NAME)
 
     read_src_from = None
     if last_ts is None:
@@ -98,7 +101,7 @@ if __name__ == "__main__":
         read_src_from = last_ts - LOOKBACK
         logging.info(f"Last source watermark: {last_ts}; reading from (watermark - lookback): {read_src_from}")
 
-    slv_model = BinanceOHLCVSlv()
+    slv_model = BinanceOHLCVSlv(catalog=catalog)
     slv_model.load_table()
     slv_df = daft.read_iceberg(slv_model.tbl_object)
     delta_df = slv_df
@@ -130,7 +133,7 @@ if __name__ == "__main__":
 
     if not max_src_change_tstamp:
         logging.info("No rows found to load into ClickHouse; exiting.")
-        sys.exit(0)
+        return
 
     delta_df.write_clickhouse(
         table=CH_TARGET_TABLE,
@@ -158,4 +161,8 @@ if __name__ == "__main__":
             field_names=list(state_row.keys()),
         )
 
-    logging.info("Updated ETL state watermark to %s", max_src_change_tstamp)
+    logging.info(f"Updated ETL state watermark to: {max_src_change_tstamp}")
+
+
+if __name__ == "__main__":
+    run_slv_to_clickhouse(catalog=get_catalog(), ch_executor=ClickHouseBaseExecutor())

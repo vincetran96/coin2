@@ -5,23 +5,23 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal
 
 import pyarrow as pa
+from pyiceberg.catalog import Catalog
 
 from common.catalog import get_catalog
 from data.iceberg.utils import to_arrow_table, add_audit_columns
 from data.interfaces import DataInserter
-from models.consts import CHG_TS_COL
 
 
 class IcebergBaseInserter(DataInserter):
     """
     Base inserter to Iceberg that can be used as a context manager
     """
-    def __init__(self, mode: Literal["append", "overwrite"] = "append") -> None:
+    def __init__(self, catalog: Catalog, mode: Literal["append", "overwrite", "upsert"] = "append") -> None:
         super().__init__(mode=mode)
 
         # Private
         self._con = None
-        self._catalog = get_catalog()
+        self._catalog = catalog or get_catalog()
 
     # def connect(self):
     #     """Connect to Iceberg db and assign a connection to its attr
@@ -36,6 +36,8 @@ class IcebergBaseInserter(DataInserter):
         """Private method
 
         Insert data into Iceberg table
+
+        Before inserting, we add audit columns to the data.
 
         Args:
             tbl_name (str): Identifier of the target table
@@ -62,6 +64,8 @@ class IcebergBaseInserter(DataInserter):
                 tbl_object.append(df=data_pa_tbl)
             case "overwrite":
                 tbl_object.overwrite(df=data_pa_tbl)
+            case "upsert":
+                tbl_object.upsert(df=data_pa_tbl)
             case _:
                 logging.info("No valid mode provided")
 

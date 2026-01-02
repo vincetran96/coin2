@@ -1,0 +1,101 @@
+# This file is required by Dagster webserver and daemon
+scheduler:
+  module: dagster.core.scheduler
+  class: DagsterDaemonScheduler
+
+#
+# Logging
+# - `python_logs` makes Python's `logging.*` records show up in Dagster's event log UI
+# - `compute_logs` controls where stdout/stderr logs are stored
+#
+# If compute logs are stored on the lauched container's local filesystem, Dagster webserver/daemon
+# won't be able to read them unless the log directory is shared via a volume
+python_logs:
+  python_log_level: INFO
+  managed_python_loggers:
+    # Capture root logger (covers typical `logging.info(...)` usage)
+    - root
+
+compute_logs:
+  module: dagster.core.storage.local_compute_log_manager
+  class: LocalComputeLogManager
+  config:
+    # This path is already mounted into webserver/daemon containers, and also into
+    # DockerRunLauncher-run containers via `run_launcher.config.container_kwargs.volumes`
+    base_dir: /tmp/io_manager_storage/compute_logs
+
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 5
+    tag_concurrency_limits:
+      - key: "operation"
+        value: "example"
+        limit: 5
+
+run_launcher:
+  module: dagster_docker
+  class: DockerRunLauncher
+  config:
+    env_vars:
+      - DAGSTER_PG_USER
+      - DAGSTER_PG_PASSWORD
+      - DAGSTER_PG_DB
+      - KAFKA_BOOTSTRAP_SERVER
+      - CLICKHOUSE_HOST
+      - CLICKHOUSE_NATIVE_PORT
+      - CLICKHOUSE_HTTP_PORT
+      - APP_INSERTER_USER
+      - APP_INSERTER_PASSWORD
+      - MINIO_ENDPOINT
+      - MINIO_ROOT_USER
+      - MINIO_ROOT_PASSWORD
+      - CATALOG_ENDPOINT
+    network: data-infra
+    container_kwargs:
+      volumes: # Make docker client accessible to any launched containers as well
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /tmp/io_manager_storage:/tmp/io_manager_storage
+
+run_storage:
+  module: dagster_postgres.run_storage
+  class: PostgresRunStorage
+  config:
+    postgres_db:
+      hostname: dagster-postgres
+      username:
+        env: DAGSTER_PG_USER
+      password:
+        env: DAGSTER_PG_PASSWORD
+      db_name:
+        env: DAGSTER_PG_DB
+      port: 5432
+
+schedule_storage:
+  module: dagster_postgres.schedule_storage
+  class: PostgresScheduleStorage
+  config:
+    postgres_db:
+      hostname: dagster-postgres
+      username:
+        env: DAGSTER_PG_USER
+      password:
+        env: DAGSTER_PG_PASSWORD
+      db_name:
+        env: DAGSTER_PG_DB
+      port: 5432
+
+event_log_storage:
+  module: dagster_postgres.event_log
+  class: PostgresEventLogStorage
+  config:
+    postgres_db:
+      hostname: dagster-postgres
+      username:
+        env: DAGSTER_PG_USER
+      password:
+        env: DAGSTER_PG_PASSWORD
+      db_name:
+        env: DAGSTER_PG_DB
+      port: 5432

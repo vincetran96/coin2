@@ -38,7 +38,7 @@ Make sure we have a binary copy of Kafka executables.
     --bootstrap-server localhost:9094 \
     --group inserter-consumer --describe --offsets
 
-# Reset offset
+# Reset offset for a consumer group
 ./bin/kafka/bin/kafka-consumer-groups.sh \
     --bootstrap-server localhost:9094 \
     --group inserter-consumer --reset-offsets --to-earliest --all-topics --execute
@@ -72,3 +72,7 @@ curl -X DELETE http://localhost:58083/connectors/iceberg-binance-ohlcv-brz
 # Restart a connector
 curl -X POST http://localhost:58083/connectors/iceberg-binance-ohlcv-brz/restart
 ```
+
+# Kafka Python API
+## Confluent-kafka
+https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html

@@ -1,0 +1,34 @@
+services:
+  # Init container to create Kafka topics
+  collector-init:
+    image: vincetran96/coin2:test
+    container_name: coin2-collector-init
+    hostname: coin2-collector-init
+    restart: "no"
+    networks:
+      - data-infra
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092
+    command: ["uv", "run", "-m", "app.collector.init"]
+
+  collector-binance:
+    image: vincetran96/coin2:test
+    container_name: coin2-collector-binance
+    hostname: coin2-collector-binance
+    restart: unless-stopped
+    depends_on:
+      coin2-collector-init:
+        condition: service_completed_successfully
+    networks:
+      - data-infra
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: coin2-kafka-0:9092,coin2-kafka-1:9092,coin2-kafka-2:9092
+    command: ["uv", "run", "-m", "app.collector.binance"]
+
+networks:
+  data-infra:
+    external: true

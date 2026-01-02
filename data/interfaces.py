@@ -23,7 +23,7 @@ class DataInserter(ABC):
     """
     def __init__(
         self,
-        mode: Literal["append", "overwrite"] = "append"
+        mode: Literal["append", "overwrite", "upsert"] = "append"
     ):
         self.mode = mode
 
